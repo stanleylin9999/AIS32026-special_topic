@@ -13,16 +13,18 @@ Simulated industrial environment (GRFICSv3) attacked through a real C2 framework
 Both are independently cloned repos, not submodules — this top-level repo only tracks
 project-wide docs and holds no code of its own.
 
+New to this project? `SETUP.md` walks through building both stacks from a clean Linux host.
+
 ## Port map
 
-| Port  | Service                          | Notes                              |
-|-------|-----------------------------------|-------------------------------------|
-| 8090  | GRFICS simulation dashboard       | localhost only                      |
-| 6081  | GRFICS HMI (ScadaLTS)             | localhost only                      |
-| 51820/udp | GRFICS router WireGuard       | localhost only                      |
-| 8080  | Mythic operator UI (nginx)        | localhost only                      |
-| 5433  | Mythic postgres                   | moved off 5432, which is taken by an unrelated native postgresql service on this host |
-| 8082/8091/3000/8888 | Mythic hasura/docs/react/jupyter | moved off defaults to avoid clashing with the 8080/8090 convention above |
+| Port                | Service                          | Notes                                                                                 |
+| ------------------- | -------------------------------- | ------------------------------------------------------------------------------------- |
+| 8090                | GRFICS simulation dashboard      | localhost only                                                                        |
+| 6081                | GRFICS HMI (ScadaLTS)            | localhost only                                                                        |
+| 51820/udp           | GRFICS router WireGuard          | localhost only                                                                        |
+| 8080                | Mythic operator UI (nginx)       | localhost only                                                                        |
+| 5433                | Mythic postgres                  | moved off 5432, which is taken by an unrelated native postgresql service on this host |
+| 8082/8091/3000/8888 | Mythic hasura/docs/react/jupyter | moved off defaults to avoid clashing with the 8080/8090 convention above              |
 
 GRFICS's `plc` container has no host-published port — it's only reachable from inside
 the `b-ics-net` Docker network, which is the point (it's the actual attack target).

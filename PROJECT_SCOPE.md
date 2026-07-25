@@ -10,11 +10,23 @@ FrostyGoop 本身是獨立 CLI 工具，攻擊者取得立足點後手動執行�
 
 雖然原本在 C2 我們就可以透過 root shell 做到遠端執行攻擊，但它不知道 Modbus 是什麼、不知道哪個暫存器寫下去有用；惡意程式封裝的是攻擊者對目標領域的知識。真實 FrostyGoop 攻擊者當時同樣早有立足點。
 
-因為手上有原始樣本的逆向結果與封包側錄，可以做逐項對照：真實行為 / 重寫版行為 / 差異與原因，以及兩者封包並排比較。
+因為手上有原始樣本的逆向結果與封包側錄，可以做逐項對照包括真實行為、重寫版行為、差異與原因，以及兩者封包並排比較。
 
 ## 已驗證的環境事實
 
 以下全部實際讀原始碼或量測得出，非理論推估。簡報可直接引用。
+
+### FrostyGoop 樣本事實（`lab/FrostyGoop/`，Ghidra 專案 `FrostyGoop`）
+
+`file` 判定為 PE32+ Windows x86-64 console，SHA256 與檔名相符。`go version -m` 直接吐出完整 build metadata：go1.20.4、`CGO_ENABLED=0`、`GOARCH=amd64`、`GOOS=windows`、module path `github.com/rolfl/modbus/CleintTCP`，相依 `github.com/rolfl/modbus`、`github.com/hsblhsn/queues`、`gopkg.in/logex.v1`。`CleintTCP` 是作者把 Client 拼錯，可當樣本身分佐證。
+
+作者沒有自己實作 Modbus，是直接包一個開源函式庫，這是「OT 惡意程式門檻不高」最直接的證據。DWARF 還留著開發者的建置路徑 `C:/Users/Hiro Kirashi/Documents/Projects/Golang/go_modbus/CleintTCP/main.go`，含行號（`main` 在 437、`MbConfig.write` 在 116、`Task.taskWorker` 在 251）。
+
+`main.Cmd` 的欄位即 CLI 介面：`ip`、`inputTask`、`inputList`、`inputTarget`、`cycle`、`output`、`mode`、`address`、`count`、`value`、`threads`（預設 3）、`timeout`（預設 10）、`try`（預設 3）、`debug`、`history`。單目標走 `-ip`，多目標與排程走 `-inputTask`/`-inputList`/`-inputTarget`/`-cycle` 指向的 JSON 檔，結果經 `-output` 寫出。JSON schema 的欄位有 `Ip`、`Code`、`Address`、`Count`、`Value`、`State`、`Tasks`、`Iplist`、`Targetlist`、`StartTime`、`WorkTime`、`PeriodTime`、`IntervalTime`。
+
+`main.main` 對 `mode` 字串的解析只有三條分支：`write` 給 `Code = 6`、`write-m` 給 `Code = 0x10`，其餘一律 `Code = 3`。`main.Task.taskWorker` 依 `Code` 分派到 `MbConfig.read`(FC03)、`MbConfig.write`(FC06，內部 reason 字串為 `Write Holding Register`)、`MbConfig.writeMultiple`(FC16)，落到 default 則什麼都不做。
+
+**FrostyGoop 只能操作 holding register，完全沒有 coil 能力。** `rolfl/modbus` 函式庫裡雖然編進了 `ReadCoils`/`WriteSingleCoil` 等符號，但 `main` 從未呼叫。這直接限制了忠實重寫版能走的攻擊路徑，見下節。
 
 ### PLC 邏輯（`GRFICSv3/plc/st_files/326339.st`，`active_program` 確認為使用中）
 
@@ -27,13 +39,21 @@ FrostyGoop 本身是獨立 CLI 工具，攻擊者取得立足點後手動執行�
 
 ### 暫存器行為分三層（「攻擊者為何選這個不選那個」的素材）
 
-| 位址 | 變數 | 行為 |
-| --- | --- | --- |
-| coil 0 + HR10-13 | `manual_mode`, `f1/f2/purge/product_manual_sp` | 寫入持久，直接接管閥門開度。但 manual_mode 旗標在 HMI 上可見 |
-| HR1026 (%MW2) | `pressure_sp` | 全程只被 `LIMIT()` 夾值、從未被重新賦值，寫入應持久。且不需切 manual_mode，透過自動控制迴路生效，製程表面上仍在自動模式（待實測） |
-| HR1024 (%MW0) | `product_flow_setpoint` | 第 227 行 `product_flow_setpoint := 30000;` 無條件執行，寫入不留存 |
+| 位址             | 變數                                           | 行為                                                                                                                              |
+| ---------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| coil 0 + HR10-13 | `manual_mode`, `f1/f2/purge/product_manual_sp` | 寫入持久，直接接管閥門開度。但 manual_mode 旗標在 HMI 上可見                                                                      |
+| HR1026 (%MW2)    | `pressure_sp`                                  | 全程只被 `LIMIT()` 夾值、從未被重新賦值，寫入應持久。且不需切 manual_mode，透過自動控制迴路生效，製程表面上仍在自動模式（待實測） |
+| HR1024 (%MW0)    | `product_flow_setpoint`                        | 第 227 行 `product_flow_setpoint := 30000;` 無條件執行，寫入不留存                                                                |
 
 同一台 PLC 上有些位址寫了就穩、有些寫了就被吃掉，這是惡意程式需要先讀取偵察的直接理由，也對應 FrostyGoop 先 FC03 讀再寫的行為模式。
+
+### 惡意程式能力限制了攻擊路徑（本專題最主要的技術結論）
+
+現行 demo 的攻擊路徑（置位 coil 0 的 `manual_mode`、再寫 HR10-13 接管閥門）**忠實重寫的 FrostyGoop 做不到**，因為切換 manual_mode 需要 FC05 寫 coil，而 FrostyGoop 只有 FC03/06/16。
+
+剩下唯一可行的是 HR1026（`pressure_sp`）：它是 holding register，FC06 就能寫，不需要 manual_mode，製程全程留在自動模式，由控制迴路自己把壓力推上去。也就是說**惡意程式的能力範圍反過來決定了攻擊者必須選哪個暫存器**，這正好解釋 FrostyGoop 為什麼要先 FC03 偵察。這條路徑尚未實測，是目前最高優先的未知項。
+
+如果 HR1026 實測不成立，只有兩條路：加 FC05（偏離忠實重寫，但要在簡報明講是刻意擴充），或退回現行 Python payload 路徑。這個分歧要在 7/26 前解決。
 
 ### 偵測盲區
 
@@ -54,8 +74,9 @@ implant 容器 `ot-workstation-implant`：uid 0、x86_64、Debian 13 glibc、`/t
 
 ### 實作
 
-- **Go binary（FrostyGoop 重寫版）** CLI 介面對齊真實樣本（`-ip -mode read|write -address -value -count -threads -cycle`），實作 FC01/FC03/FC05/FC06/FC16。
-- **原子序列編排** 單一 task 展開為：確認 `run_bit` -> 置位 `manual_mode` -> 依序寫 HR10-13 -> FC01/FC03 讀回驗證 -> 任一步失敗則將 `manual_mode` 寫回 0 回滾。
+- **Go binary（FrostyGoop 重寫版）** CLI 介面對齊逆向出的 `main.Cmd`：`-ip -mode write|write-m -address -value -count -threads -timeout -try -output -debug`。只實作 FC03/FC06/FC16，**刻意不加 FC01/FC05**，維持與樣本相同的能力範圍。`-mode` 的解析比照樣本，只認 `write` 與 `write-m`，其餘一律當讀取。
+- **原子序列編排** 因為沒有 coil 能力，序列改為純 holding register：FC03 讀 HR1026 存下原值 -> FC06 寫入新 setpoint -> FC03 讀回驗證 -> 失敗則將原值寫回。這個形狀恰好就是樣本 `Task.taskWorker` 已有的 read/write/回報結構，不是我們外加的。
+- **JSON 任務清單與排程（可選，視進度）** 樣本的 `-inputTask`/`-cycle` 機制。做得完就做，因為它是「接上 C2 之後 operator 下發什麼」最自然的載體；來不及就只留單目標 flag 路徑。
 - **多目標介面（降級）** 接受逗號分隔多目標並依序處理。環境只有一台 PLC，不宣稱已驗證規模化，僅呈現設計意圖。
 
 ### 量測與素材
@@ -63,8 +84,8 @@ implant 容器 `ot-workstation-implant`：uid 0、x86_64、Debian 13 glibc、`/t
 - **暫存器三層行為實驗** — 對 HR10-13 / HR1026 / HR1024 分別寫入後高頻讀回，記錄留存與否。
 - **掃描週期論述** — 20ms 出自原始碼 `T#20ms`。可展示的實測結論是「寫入 HR1024 的值不留存，一個掃描週期內即消失」，不宣稱量出精確毫秒數。
 - **Suricata 離線重放** — host bridge 側錄後餵給 router 內 Suricata，產出 `fast.log` 對照。
-- **三欄比較表** — 真實 FrostyGoop 逆向結果 / 重寫版 / 差異與原因。
-- **封包並排** — 真實樣本 pcap 與重寫版側錄對照。
+- **三欄比較表** — 真實 FrostyGoop 逆向結果 / 重寫版 / 差異與原因。已知的刻意差異：平台從 Windows PE 換成 Linux ELF（環境如此，與功能對等無關）、自行實作 Modbus 而非包 `rolfl/modbus`、接上 C2 tasking 取代人工投放與人工回收 log。
+- **封包並排** — 課程 PDF 那組 FC06 request/response 截圖（address 87、value 88）對重寫版打同一組參數的側錄。兩邊 function code、reference number、register value 應逐欄相符。
 
 ### 文件與簡報
 
@@ -78,15 +99,18 @@ implant 容器 `ot-workstation-implant`：uid 0、x86_64、Debian 13 glibc、`/t
 
 ### 7/25（今天，剩半天）
 
-- [ ] 確認團隊的 FrostyGoop 逆向筆記與真實樣本 pcap 確實在手（三欄比較表與封包並排完全依賴這批素材，若不完整今天就要重新規劃這兩張投影片）
-- [ ] 決定 Go 程式碼落點並建目錄，同時更新 `CLAUDE.md` 的 git 規則
+- [x] 確認樣本與逆向素材在手：`lab/FrostyGoop/` 有樣本與自製 `fake_modbus_slave.py`，Ghidra 專案已載入，封包對照素材取自課程 PDF 的 Wireshark 截圖（`-ip 127.0.0.1 -mode write -address 87 -value 88` 那組 FC06 request/response）
+- [x] 決定 Go 程式碼落點並建目錄，同時更新 `CLAUDE.md` 的 git 規則
+- [x] `lab/` 加進 `.gitignore`（原本既未忽略也未追蹤，一個 `git add .` 就會把活體樣本推上 GitHub）
+- [ ] **實測 HR1026（`pressure_sp`）寫入是否持久、是否能在自動模式下把壓力推上去**（最高優先：忠實重寫版沒有 coil 能力，這是唯一可走的路徑，不成立就要改設計）
 - [ ] hello-world binary 走完完整投遞鏈：Poseidon `upload` -> `chmod +x` -> 執行（這條路從沒測過，是關鍵路徑。今天失敗還有 `shell python3` 可退）
 
 ### 7/26
 
-- [ ] Go binary 骨架：flag 解析、MBAP header 組裝、連線管理
-- [ ] FC01/FC03/FC05/FC06/FC16 實作，逐一對 `plc:502` 驗證
+- [ ] Go binary 骨架：flag 解析對齊 `main.Cmd`、MBAP header 組裝、連線管理
+- [ ] FC03/FC06/FC16 實作，先對 `fake_modbus_slave.py` 驗證（它剛好也只實作這三個），再對 `plc:502` 驗證
 - [ ] 暫存器三層行為實驗，記錄結果
+- [ ] 攻擊路徑定案：HR1026 成立則走忠實重寫，不成立則決定加 FC05 或退回舊路徑
 
 ### 7/27
 
