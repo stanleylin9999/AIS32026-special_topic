@@ -42,7 +42,7 @@ FrostyGoop 本身是獨立 CLI 工具，攻擊者取得立足點後手動執行�
 | 位址             | 變數                                           | 行為                                                                                                                              |
 | ---------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
 | coil 0 + HR10-13 | `manual_mode`, `f1/f2/purge/product_manual_sp` | 寫入持久，直接接管閥門開度。但 manual_mode 旗標在 HMI 上可見                                                                      |
-| HR1026 (%MW2)    | `pressure_sp`                                  | 全程只被 `LIMIT()` 夾值、從未被重新賦值，寫入應持久。且不需切 manual_mode，透過自動控制迴路生效，製程表面上仍在自動模式（待實測） |
+| HR1026 (%MW2)    | `pressure_sp`                                  | 全程只被 `LIMIT()` 夾值、從未被重新賦值。已實測寫入持久，且不需切 manual_mode，由自動控制迴路自己把壓力推過破壞門檻 |
 | HR1024 (%MW0)    | `product_flow_setpoint`                        | 第 227 行 `product_flow_setpoint := 30000;` 無條件執行，寫入不留存                                                                |
 
 同一台 PLC 上有些位址寫了就穩、有些寫了就被吃掉，這是惡意程式需要先讀取偵察的直接理由，也對應 FrostyGoop 先 FC03 讀再寫的行為模式。
@@ -55,7 +55,21 @@ FrostyGoop 本身是獨立 CLI 工具，攻擊者取得立足點後手動執行�
 
 **同一台 PLC、同一支惡意程式家族，兩種性質完全不同的攻擊，差別純粹來自協定覆蓋範圍。** 間接經控制迴路生效、與直接接管執行器，是兩個不同的威脅等級。這是簡報的主論證，兩條路徑台上都打得出來。
 
-HR1026 尚未實測，它是對照組——要證明「忠實能力範圍下唯一可行的路徑確實可行」。不成立不會阻塞進度，因為 coil 路徑已驗證可用。
+**兩條路徑都已從乾淨初始狀態實測成立。** HR1026 路徑的完整量測記錄見下節。
+
+### HR1026 路徑實測記錄（2026-07-25，從重啟 `plc` 的乾淨狀態起算）
+
+壓力的工程單位換算為 `kPa = raw / 65535 * 3200`（出自 `simulation/remote_io/modbus/tank.py:10`），物理模型本身在 `TE_process.cc:232` 把壓力夾在 3200 kPa。正常運轉的 `pressure_sp` 是 55295 raw，即 2700 kPa。
+
+乾淨狀態基線：壓力穩定在 55295 附近，purge 閥持續調節維持，`manual_mode = 0`。
+
+單一個 FC06 寫入 HR1026 = 65535（3200 kPa）之後，purge 閥維持全關，壓力以每秒約 35 raw 單位單調爬升，約三到四分鐘後達到 63583 raw = **3104.7 kPa，超過 GRFICS 的 3000 kPa 破壞門檻**。全程 `manual_mode` 維持 0，未曾送出任何 coil 操作。
+
+回滾同樣實測成立：把 55295 寫回 HR1026，purge 閥立刻全開，壓力回落。這驗證了上面「失敗則將原值寫回」的序列設計。
+
+值得注意的副作用：ST 第 197 行的 `pressure_override()` 本來是壓力升高時降低產品流量的安全響應，但第 227 行無條件把 `product_flow_setpoint` 重設為 30000，等於把它抵銷掉。這是 PLC 程式自身的邏輯缺陷，不是攻擊造成的。
+
+爬升速率也是 demo 節奏的資訊：**隱蔽的路徑同時也是慢的路徑。** 直接接管執行器快而明顯，改 setpoint 慢而安靜，這是真實的權衡而不是修辭。
 
 ### 偵測盲區
 
@@ -104,8 +118,8 @@ implant 容器 `ot-workstation-implant`：uid 0、x86_64、Debian 13 glibc、`/t
 - [x] 確認樣本與逆向素材在手：`lab/FrostyGoop/` 有樣本與自製 `fake_modbus_slave.py`，Ghidra 專案已載入，封包對照素材取自課程 PDF 的 Wireshark 截圖（`-ip 127.0.0.1 -mode write -address 87 -value 88` 那組 FC06 request/response）
 - [x] 決定 Go 程式碼落點並建目錄，同時更新 `CLAUDE.md` 的 git 規則
 - [x] `lab/` 加進 `.gitignore`（原本既未忽略也未追蹤，一個 `git add .` 就會把活體樣本推上 GitHub）
-- [ ] 實測 HR1026（`pressure_sp`）寫入是否持久、能否在自動模式下把壓力推上去（對照組用，不阻塞：coil 路徑已驗證可行）
-- [ ] 確認重啟 `plc` 容器是否為正確的復原方式（現況 `manual_mode` 仍為 1、HR10-13 仍是上次攻擊值，`restart simulation` 沒有重置控制器）
+- [x] 實測 HR1026（`pressure_sp`）路徑成立，壓力達 3104.7 kPa 且 `manual_mode` 全程為 0，回滾亦成立
+- [x] 確認復原方式：重啟 `plc` 會把 `manual_mode` 歸 0、HR10-13 回到 ST 宣告初值，但會打斷 simulation 的 Modbus 連線，**必須接著重啟 `simulation`**
 - [ ] hello-world binary 走完完整投遞鏈：Poseidon `upload` -> `chmod +x` -> 執行（這條路從沒測過，是關鍵路徑。今天失敗還有 `shell python3` 可退）
 
 ### 7/26
@@ -147,7 +161,7 @@ implant 容器 `ot-workstation-implant`：uid 0、x86_64、Debian 13 glibc、`/t
 - **UFW**：確認 bridge 到 host 的 allow rule 仍在，否則 callback 逾時而非拒絕連線。
 - **JWT**：Mythic operator 介面 token 會過期，demo 前重新登入。
 - **鍵盤 E**：GRFICS 3D 介面按 E 會觸發 e-stop，demo 時避免焦點停在該視窗。
-- **重置**：`restart simulation` 只重置物理模型，PLC 是另一個容器、會繼續握著 `manual_mode` 與被改過的設定值。實測現況即為 `manual_mode = 1`、HR10-13 仍是上次攻擊值。完整復原需一併重啟 `plc`，或明確把 coil 0 寫回 0。彩排時計時確認可接受。
+- **重置順序是 `plc` 然後 `simulation`，不能只重啟後者**：`restart simulation` 只重置物理模型，PLC 會繼續握著 `manual_mode` 與被改過的設定值（實測過一次開場就是 `manual_mode = 1`、HR10-13 還是上次攻擊值，代表過去每次 demo 的初始狀態都是未知的）。反過來只重啟 `plc` 會打斷 simulation 的 Modbus 連線，壓力讀值卡在 65535 飽和。兩者都重啟、`plc` 先，重連約需 30 秒，之後壓力還要幾分鐘才爬回 2700 kPa 基線——彩排時把這段時間算進去。
 
 ## 不做的事
 
