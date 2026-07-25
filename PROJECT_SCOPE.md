@@ -84,7 +84,9 @@ FrostyGoop 本身是獨立 CLI 工具，攻擊者取得立足點後手動執行�
 
 ### Binary 投遞前提（已確認可行）
 
-implant 容器 `ot-workstation-implant`：uid 0、x86_64、Debian 13 glibc、`/tmp` 可寫且 rootfs 無 `noexec`。host 有 Go 1.26。`CGO_ENABLED=0 GOOS=linux GOARCH=amd64` 靜態編譯即可執行。
+implant 容器 `ot-workstation-implant`：uid 0、x86_64、Debian 13 glibc、`/tmp` 可寫且 rootfs 無 `noexec`。host 有 Go 1.26。`CGO_ENABLED=0 GOOS=linux GOARCH=amd64` 靜態編譯即可執行。已用一支 hello-world 靜態 ELF 走完整條投遞鏈實測通過（見 7/25 checklist），FrostyGoop 重寫版走同一條路。
+
+投遞坑：這個 Poseidon build 沒有原生 `chmod` command（GraphQL command table 是 payload type 層級的全集，實際 build 未必全編入，agent 對未編入的 command 回 `Unknown command`）。`upload`/`shell` 有、`chmod` 沒有，所以設執行位元要走 `shell chmod +x`。scripting 走 nginx `127.0.0.1:8080`（TLS 入口），不是 `MYTHIC_SERVER_PORT` 17443。
 
 ## 交付項目
 
@@ -120,7 +122,7 @@ implant 容器 `ot-workstation-implant`：uid 0、x86_64、Debian 13 glibc、`/t
 - [x] `lab/` 加進 `.gitignore`（原本既未忽略也未追蹤，一個 `git add .` 就會把活體樣本推上 GitHub）
 - [x] 實測 HR1026（`pressure_sp`）路徑成立，壓力達 3104.7 kPa 且 `manual_mode` 全程為 0，回滾亦成立
 - [x] 確認復原方式：重啟 `plc` 會把 `manual_mode` 歸 0、HR10-13 回到 ST 宣告初值，但會打斷 simulation 的 Modbus 連線，**必須接著重啟 `simulation`**
-- [ ] hello-world binary 走完完整投遞鏈：Poseidon `upload` -> `chmod +x` -> 執行（這條路從沒測過，是關鍵路徑。今天失敗還有 `shell python3` 可退）
+- [x] hello-world binary 走完完整投遞鏈：`register_file` -> Poseidon `upload`（1597602 bytes 落地 `/tmp/hello`）-> `shell chmod +x` -> `shell` 執行，implant 回傳 `host=db74400484a4 uid=0 goarch=amd64`。全程走 operator API，未用 docker exec 捷徑。關鍵路徑已綠
 
 ### 7/26
 
