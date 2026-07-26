@@ -120,7 +120,7 @@ implant 容器 `ot-workstation-implant`：uid 0、x86_64、Debian 13 glibc、`/t
 ### 7/25
 
 - [x] 確認樣本與逆向素材在手：`lab/FrostyGoop/` 有樣本與自製 `fake_modbus_slave.py`，Ghidra 專案已載入，封包對照素材取自課程 PDF 的 Wireshark 截圖（`-ip 127.0.0.1 -mode write -address 87 -value 88` 那組 FC06 request/response）
-- [x] 決定 Go 程式碼落點並建目錄，同時更新 `CLAUDE.md` 的 git 規則
+- [x] 決定 Go 程式碼落點（`frostygoop-rewrite/`），同時更新 `CLAUDE.md` 的 git 規則。目錄樹與可編譯骨架實際建立於 7/26，見 `team/README.md`
 - [x] `lab/` 加進 `.gitignore`（原本既未忽略也未追蹤，一個 `git add .` 就會把活體樣本推上 GitHub）
 - [x] 實測 HR1026（`pressure_sp`）路徑成立，壓力達 3104.7 kPa 且 `manual_mode` 全程為 0，回滾亦成立
 - [x] 確認復原方式：重啟 `plc` 會把 `manual_mode` 歸 0、HR10-13 回到 ST 宣告初值，但會打斷 simulation 的 Modbus 連線，**必須接著重啟 `simulation`**

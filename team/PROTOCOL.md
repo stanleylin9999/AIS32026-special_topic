@@ -11,9 +11,12 @@
 名稱與 `-mode` 字串對應到哪個 function code，來自一份還沒人複核的 Ghidra 逆向報告
 （見 `../PROJECT_SCOPE.md` 的標註）。那份報告如果有錯，錯的只會是 flag 表。
 
-所以：wire format 現在就寫，flag 表等複核結果。複核由逆向與量測那條線負責，**7/26 收工
-前給你確認過的 `main.Cmd` 欄位與 mode 對應表**。在那之前 `main.go` 先留一組暫定 flag 能
-跑通就好，不要花時間對齊細節。
+所以：wire format 現在就寫，flag 名稱等複核結果。複核由逆向與量測那條線負責，**7/26 收工
+前給你確認過的 `main.Cmd` 欄位名稱與 `write`/`write-m` 的 Code 對應**。
+
+要講清楚的是**只有那兩項是暫定的**。`main.go` 的骨架已經有一組暫定 flag 可以跑，而 `-mode`
+的完整對應表（含我們新增的 `read-coil`/`write-coil`/`takeover`/`setpoint`）已經在
+`README.md` 定好了，那幾列是我們自己的設計，不受複核影響，現在就能照著實作。
 
 ## 要實作的五個 function code
 
@@ -38,9 +41,9 @@ big-endian。`protocol_id` 固定 0。FC05 的值只有兩個合法值：`0xFF00
 
 ## 測試用假 PLC
 
-`testdata/fake_slave.py` 從 `lab/FrostyGoop/fake_modbus_slave.py` 複製過來（`lab/` 是
-gitignore 的，所以要有一份追蹤得到的）。**原版只實作 FC03/06/16，你要自己補上 FC01/FC05**，
-大概三十行的事。
+`testdata/fake_slave.py` 已經在 repo 裡（從 gitignore 的 `lab/` 複製出來的，所以你 clone
+就有）。**它只實作 FC03/06/16，你要自己補上 FC01/FC05**，大概三十行的事。它要多維護一張
+coil 表，跟現有的 holding register 表平行。
 
 補完之後你整條開發流程都在本機打假 PLC，不需要碰 GRFICS。這是刻意的安排：真的 PLC 只有
 一台、四個人共用，你去打它會污染別人正在錄的量測數據。真 PLC 的驗證留到序列層跑完整鏈路

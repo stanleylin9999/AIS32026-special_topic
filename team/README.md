@@ -35,6 +35,9 @@ frostygoop-rewrite/
 **一個檔案只有一個負責人。** 需要動不屬於自己的檔案時，先講一聲，不要直接改，不然 merge
 會很痛。Go 版本用 host 上的 1.26.0，建置目標固定 `CGO_ENABLED=0 GOOS=linux GOARCH=amd64`。
 
+上面每個檔案都已經建好可編譯的空殼並提交，`go build ./...` 現在就過，靜態 ELF 也產得出
+來。直接把 stub 換成實作即可，**不要自己 `go mod init`**，`go.mod` 已經在了。
+
 ## 介面契約
 
 協定層負責產出下面這組簽章，序列層照這組寫。**這是兩邊唯一的接觸面。**
@@ -85,7 +88,30 @@ func CoilTakeover(c *modbus.Conn, f1, f2, purge, product uint16) (*Result, error
 func PressureSetpoint(c *modbus.Conn, value uint16) (*Result, error)
 ```
 
-`cmd/frostygoop/main.go` 由協定層擁有，負責把 `-mode` 字串對到上面兩個序列函式。
+## `-mode` 對應表
+
+`cmd/frostygoop/main.go` 由協定層擁有，這張表是它跟序列層的第二個接觸面。
+
+mode 分兩層。**primitive** 只送一個 function code，對應樣本用 mode 字串挑 Code 的做法；
+**sequence** 跑一整套含前置檢查、讀回驗證與回滾的序列，是我們才有的。
+
+| `-mode`      | 行為                      | 層級      | 來源     |
+| ------------ | ------------------------- | --------- | -------- |
+| `read`       | FC03                      | primitive | 樣本原有 |
+| `write`      | FC06                      | primitive | 樣本原有 |
+| `write-m`    | FC16                      | primitive | 樣本原有 |
+| `read-coil`  | FC01                      | primitive | 我們新增 |
+| `write-coil` | FC05                      | primitive | 我們新增 |
+| `takeover`   | `attack.CoilTakeover`     | sequence  | 我們新增 |
+| `setpoint`   | `attack.PressureSetpoint` | sequence  | 我們新增 |
+
+`write-coil` 是單一個 FC05，**不會**幫你做 `run_bit` 前置檢查或回滾；要完整序列請用
+`takeover`。這條界線劃在這裡，是為了讓 demo 能分別展示「原版做得到的原始操作」與「重寫
+版才有的編排」。
+
+樣本原有的那三列（含「無法辨識的 mode 一律落回 FC03」這個行為要不要保留）在 Ghidra 複核
+完成前都是暫定的，見 `RE_MEASUREMENT.md`。新增的四列是我們自己的設計，不受複核影響，可
+以直接照著寫。
 
 ## 環境是共用的，只有一台 PLC
 
