@@ -30,6 +30,9 @@ the attack chain at anything outside the two local Compose stacks.
 - `PROJECT_SCOPE.md` — deliverables, day-by-day schedule, and the verified environment
   facts the presentation cites (PLC interlocks, register persistence tiers, IDS blind
   spot). Anything claimed in slides should trace back to a fact recorded here.
+- `team/` — the four-person work split. `team/README.md` holds the Go interface
+  contract between the protocol and sequence workstreams; it is the single place that
+  contract is defined, so edit it there rather than restating it in a role doc.
 - `GRFICSv3/CLAUDE.md` — GRFICS architecture (three networks, container roles,
   fork-specific deviations from upstream Fortiphyd)
 - `Mythic/README.md` — Mythic is a third-party framework we operate but don't modify
