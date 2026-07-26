@@ -3,7 +3,9 @@
 Minimal Modbus TCP fake slave for malware-analysis labs.
 
 Implemented function codes:
+  0x01 - Read Coils
   0x03 - Read Holding Registers
+  0x05 - Write Single Coil
   0x06 - Write Single Holding Register
   0x10 - Write Multiple Holding Registers
 
@@ -14,6 +16,7 @@ It is intended for isolated lab use only.
 from __future__ import annotations
 
 import argparse
+import re
 import socketserver
 import struct
 import sys
@@ -23,7 +26,9 @@ from datetime import datetime
 from typing import Iterable
 
 
+FC_READ_COILS = 0x01
 FC_READ_HOLDING = 0x03
+FC_WRITE_COIL = 0x05
 FC_WRITE_SINGLE = 0x06
 FC_WRITE_MULTIPLE = 0x10
 
@@ -62,12 +67,78 @@ def modbus_exception(fc: int, code: int) -> bytes:
     return bytes([fc | 0x80, code])
 
 
+def parse_coils_arg(value: str) -> tuple[int, dict[int, bool]]:
+    text = value.strip()
+    if text == "":
+        raise ValueError("--coils cannot be empty")
+
+    if re.fullmatch(r"\d+", text):
+        count = int(text)
+        return count, {}
+
+    init: dict[int, bool] = {}
+    max_addr = -1
+    for raw_pair in text.split(","):
+        pair = raw_pair.strip()
+        if pair == "":
+            continue
+        parts = pair.split(":", 1)
+        if len(parts) != 2:
+            raise ValueError(f"invalid coil pair {pair!r}, expected addr:value")
+
+        addr_text = parts[0].strip()
+        value_text = parts[1].strip().lower()
+        if not re.fullmatch(r"\d+", addr_text):
+            raise ValueError(f"invalid coil address {addr_text!r}")
+        addr = int(addr_text)
+
+        if value_text in ("1", "true", "on"):
+            on = True
+        elif value_text in ("0", "false", "off"):
+            on = False
+        else:
+            raise ValueError(
+                f"invalid coil value {value_text!r}, expected 0/1,true/false,on/off"
+            )
+
+        init[addr] = on
+        if addr > max_addr:
+            max_addr = addr
+
+    if not init:
+        raise ValueError("--coils must be an integer or addr:value list")
+
+    count = max(1024, max_addr + 1)
+    return count, init
+
+
 class ModbusState:
-    def __init__(self, register_count: int) -> None:
+    def __init__(self, register_count: int, coil_count: int) -> None:
         self.registers = [(i & 0xFFFF) for i in range(register_count)]
+        self.coils = [False for _ in range(coil_count)]
 
     def valid_range(self, address: int, count: int) -> bool:
         return 0 <= address and 0 <= count and address + count <= len(self.registers)
+
+    def valid_coil_range(self, address: int, count: int) -> bool:
+        return 0 <= address and 0 <= count and address + count <= len(self.coils)
+
+
+def pack_coils(values: Iterable[bool]) -> bytes:
+    packed = bytearray()
+    current = 0
+    bit = 0
+    for v in values:
+        if v:
+            current |= 1 << bit
+        bit += 1
+        if bit == 8:
+            packed.append(current)
+            current = 0
+            bit = 0
+    if bit != 0:
+        packed.append(current)
+    return bytes(packed)
 
 
 class ModbusRequestHandler(socketserver.BaseRequestHandler):
@@ -119,6 +190,40 @@ class ModbusRequestHandler(socketserver.BaseRequestHandler):
         fc = pdu[0]
         state: ModbusState = self.server.state
 
+        if fc == FC_READ_COILS:
+            if len(pdu) != 5:
+                self.server.log_request(peer, transaction_id, unit_id, fc, pdu, "bad_length")
+                return modbus_exception(fc, EX_ILLEGAL_VALUE)
+            address = u16(pdu, 1)
+            count = u16(pdu, 3)
+            if count < 1 or count > 2000:
+                self.server.log_request(
+                    peer, transaction_id, unit_id, fc, pdu, f"bad_count count={count}"
+                )
+                return modbus_exception(fc, EX_ILLEGAL_VALUE)
+            if not state.valid_coil_range(address, count):
+                self.server.log_request(
+                    peer,
+                    transaction_id,
+                    unit_id,
+                    fc,
+                    pdu,
+                    f"bad_address address={address} count={count}",
+                )
+                return modbus_exception(fc, EX_ILLEGAL_ADDRESS)
+
+            values = state.coils[address : address + count]
+            packed = pack_coils(values)
+            self.server.log_request(
+                peer,
+                transaction_id,
+                unit_id,
+                fc,
+                pdu,
+                f"read_coils address={address} count={count} values={values[:16]}",
+            )
+            return bytes([fc, len(packed)]) + packed
+
         if fc == FC_READ_HOLDING:
             if len(pdu) != 5:
                 self.server.log_request(peer, transaction_id, unit_id, fc, pdu, "bad_length")
@@ -153,6 +258,40 @@ class ModbusRequestHandler(socketserver.BaseRequestHandler):
                 f"read_holding address={address} count={count} values={preview}{suffix}",
             )
             return bytes([fc, count * 2]) + pack_registers(values)
+
+        if fc == FC_WRITE_COIL:
+            if len(pdu) != 5:
+                self.server.log_request(peer, transaction_id, unit_id, fc, pdu, "bad_length")
+                return modbus_exception(fc, EX_ILLEGAL_VALUE)
+            address = u16(pdu, 1)
+            value = u16(pdu, 3)
+            if value not in (0xFF00, 0x0000):
+                self.server.log_request(
+                    peer, transaction_id, unit_id, fc, pdu, f"bad_value value=0x{value:04x}"
+                )
+                return modbus_exception(fc, EX_ILLEGAL_VALUE)
+            if not state.valid_coil_range(address, 1):
+                self.server.log_request(
+                    peer,
+                    transaction_id,
+                    unit_id,
+                    fc,
+                    pdu,
+                    f"bad_address address={address}",
+                )
+                return modbus_exception(fc, EX_ILLEGAL_ADDRESS)
+
+            old_value = state.coils[address]
+            state.coils[address] = value == 0xFF00
+            self.server.log_request(
+                peer,
+                transaction_id,
+                unit_id,
+                fc,
+                pdu,
+                f"write_coil address={address} old={old_value} new={state.coils[address]}",
+            )
+            return pdu
 
         if fc == FC_WRITE_SINGLE:
             if len(pdu) != 5:
@@ -304,6 +443,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         help="number of in-memory holding registers",
     )
     parser.add_argument(
+        "--coils",
+        default="1024",
+        help="coil count (e.g. 1024) or init map (e.g. 0:0,40:1)",
+    )
+    parser.add_argument(
         "--delay-ms",
         type=int,
         default=0,
@@ -324,6 +468,14 @@ def main(argv: list[str]) -> int:
     if args.registers <= 0 or args.registers > 65536:
         print("--registers must be between 1 and 65536", file=sys.stderr)
         return 2
+    try:
+        coil_count, coil_init = parse_coils_arg(args.coils)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    if coil_count <= 0 or coil_count > 65536:
+        print("--coils must be between 1 and 65536", file=sys.stderr)
+        return 2
     if args.delay_ms < 0:
         print("--delay-ms must be non-negative", file=sys.stderr)
         return 2
@@ -331,7 +483,9 @@ def main(argv: list[str]) -> int:
         print("--max-requests must be non-negative", file=sys.stderr)
         return 2
 
-    state = ModbusState(args.registers)
+    state = ModbusState(args.registers, coil_count)
+    for addr, on in coil_init.items():
+        state.coils[addr] = on
     with ThreadedModbusServer(
         (args.host, args.port),
         ModbusRequestHandler,
@@ -343,7 +497,7 @@ def main(argv: list[str]) -> int:
         server.log(
             (
                 f"listening host={args.host} port={args.port} "
-                f"registers={args.registers} delay_ms={args.delay_ms} "
+                f"registers={args.registers} coils={coil_count} delay_ms={args.delay_ms} "
                 f"max_requests={args.max_requests}"
             )
         )

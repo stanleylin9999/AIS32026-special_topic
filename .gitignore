@@ -1,5 +1,5 @@
-GRFICSv3/
-Mythic/
+GRFICSv3
+Mythic
 
 # Live malware samples under analysis. Never push these to a remote — GitHub
 # flags them and redistributing the binary serves no purpose the RE notes don't.
