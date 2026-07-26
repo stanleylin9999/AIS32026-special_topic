@@ -28,9 +28,9 @@ Mythic Operator UI (8080)
 
 GRFICS 三個網段對應真實 IT/OT 分層 (詳見 `GRFICSv3/CLAUDE.md`):
 
-- `b-ics-net` (`192.168.95.0/24`) — OT 製程網: `simulation`, `plc`
-- `c-dmz-net` (`192.168.90.0/24`) — DMZ/企業網
-- `a-grfics-admin` — 管理網
+- `b-ics-net` (`192.168.95.0/24`): OT 製程網: `simulation`, `plc`
+- `c-dmz-net` (`192.168.90.0/24`): DMZ/企業網
+- `a-grfics-admin`: 管理網
 
 關鍵 IP / port:
 
@@ -59,7 +59,7 @@ docker compose -f GRFICSv3/docker-compose.yml up -d simulation plc hmi router
 注意 Mythic 自帶的 postgresql 綁在 host port 5432, 這個是別的專案在用的, 全程不要動它。
 
 
-## Phase 1 — 在 Mythic 安裝 Poseidon 與 HTTP C2 profile
+## Phase 1: 在 Mythic 安裝 Poseidon 與 HTTP C2 profile
 
 Poseidon 是 Linux ELF implant, 之後靠它的 `shell` 指令在 OT 主機上跑 Modbus 寫入。
 HTTP profile 提供 implant 回連 operator 的通道。
@@ -68,7 +68,7 @@ HTTP profile 提供 implant 回連 operator 的通道。
 container 起來後在 operator UI 確認兩者狀態正常。
 
 
-## Phase 2 — 把 C2 profile 橋接到 OT 網段
+## Phase 2: 把 C2 profile 橋接到 OT 網段
 
 讓 HTTP C2 profile container 用 `network_mode: host`, 這樣它會監聽在 host 的所有介面
 (`0.0.0.0:80`) 上, 包含 Docker bridge 的 gateway。
@@ -77,13 +77,13 @@ b-ics-net 上的 implant 就能透過 bridge gateway `192.168.95.1:80` 回連到
 不需要把 profile 直接掛進 b-ics-net。
 
 
-## Phase 3 — 驗證回連可達性
+## Phase 3: 驗證回連可達性
 
 在 b-ics-net 網段的主機上測試能不能連到 `192.168.95.1:80`。可達就代表 implant 之後
 能正常 callback。
 
 
-## Phase 4 — 建置並部署 Poseidon payload
+## Phase 4: 建置並部署 Poseidon payload
 
 用 Mythic 產生 Poseidon Linux payload, callback host 指向 bridge gateway
 `192.168.95.1`, port `80`。
@@ -98,7 +98,7 @@ payload 可從 Mythic 的 REST endpoint 下載:
 (這次 demo 是 callback id 1)。
 
 
-## Phase 5 — 確認 Modbus 位址對應 (只需做一次)
+## Phase 5: 確認 Modbus 位址對應 (只需做一次)
 
 發動攻擊前先確認 OpenPLC 的位址對應。OpenPLC 把 `%QW` (output words) 對應到
 holding register 從 HR0 開始, `%MW` (memory words) 從 HR1024 開始, `%QX` (output bits)
@@ -113,7 +113,7 @@ python3 dump_registers.py
 
 這次 demo 確認出來的對應:
 
-- coil 0 = `manual_mode` (`%QX0.0`) — 決定用自動還是手動閥門 setpoint
+- coil 0 = `manual_mode` (`%QX0.0`): 決定用自動還是手動閥門 setpoint
 - coil 40 = `run_bit`
 - HR10-13 = 手動閥門 setpoint (feed1 / feed2 / purge / product)
 - HR1024 = `product_flow_setpoint`
@@ -125,23 +125,23 @@ python3 dump_registers.py
 現行執行的是 `326339.st`, 不是 `655326.st`。
 
 
-## Phase 6 — 在 Mythic operator UI 手動下 shell 指令
+## Phase 6: 在 Mythic operator UI 手動下 shell 指令
 
-這是 demo 的核心畫面 — 觀眾要看到 operator 坐在 Mythic 前面對受控 host 下指令,
+這是 demo 的核心畫面。觀眾要看到 operator 坐在 Mythic 前面對受控 host 下指令,
 指令效果一路穿透到 OT 網段的 PLC。用腳本繞過 UI 直打 GraphQL 會失掉這條敘事
 (見附錄)。
 
 打開 operator UI (`localhost:8080`), 從左側 callback 列表點進 callback 1 的
 Interact 視窗。
 
-準備 payload — 遠端要跑的 Python 一次送五筆 Modbus write-single, 讓攻擊自成一體,
+準備 payload: 遠端要跑的 Python 一次送五筆 Modbus write-single, 讓攻擊自成一體,
 不需要在受害主機上額外裝工具。五筆寫入:
 
-- `manual_mode` ON — FC05 寫 coil 0 = `0xFF00`, PLC 改吃手動閥門設定
-- purge valve 關 — FC06 寫 HR12 = 0
-- product valve 關 — FC06 寫 HR13 = 0
-- feed1 valve 全開 — FC06 寫 HR10 = 65535
-- feed2 valve 全開 — FC06 寫 HR11 = 65535
+- `manual_mode` ON: FC05 寫 coil 0 = `0xFF00`, PLC 改吃手動閥門設定
+- purge valve 關: FC06 寫 HR12 = 0
+- product valve 關: FC06 寫 HR13 = 0
+- feed1 valve 全開: FC06 寫 HR10 = 65535
+- feed2 valve 全開: FC06 寫 HR11 = 65535
 
 進料全開 + 排放全關 = 反應器壓力持續累積, 直到物理引擎的 3200 kPa 上限。
 
@@ -171,7 +171,7 @@ fork/exec 那段指令; Python 解 base64 執行內含的 Modbus 寫入; 五筆 
 render 給 operator。
 
 
-## Phase 7 — 觀察 dashboard 畫面
+## Phase 7: 觀察 dashboard 畫面
 
 打開 `localhost:8090`, 攻擊生效後畫面上會看到:
 
@@ -210,7 +210,7 @@ docker compose -f GRFICSv3/docker-compose.yml restart simulation
 "Press E to pull the E-stop", 這會透過 PHP API 對物理引擎 socket 送 e_stop 請求, 把
 整個工廠鎖進安全狀態, 之後 PLC 寫什麼都不會動製程。
 
-確認過模擬引擎原始碼裡沒有任何以壓力為門檻的自動 e_stop 觸發 — e_stop 只會被鍵盤 `E`
+確認過模擬引擎原始碼裡沒有任何以壓力為門檻的自動 e_stop 觸發。e_stop 只會被鍵盤 `E`
 或 PHP API 手動觸發。所以重跑攻擊時, dashboard 分頁不要碰鍵盤就好。
 
 ### remote Python 出現 SyntaxError
@@ -234,17 +234,17 @@ docker compose -f GRFICSv3/docker-compose.yml restart simulation
 
 輔助腳本 (放在 job tmp 目錄):
 
-- `generate_payload.py` — 產生 Phase 6 要貼進 Mythic UI 的 shell 指令
+- `generate_payload.py`: 產生 Phase 6 要貼進 Mythic UI 的 shell 指令
   (改 PLC IP 或 Modbus 寫入清單後重跑, 拿新的 base64 payload)
-- `dump_registers.py` — 讀 PLC 暫存器/coil, 確認位址對應 (Phase 5 用)
-- `watch_plant.py` — 每秒讀物理引擎狀態, 觀察壓力變化 (Phase 7 用)
-- `clear_estop.py` — 對物理引擎送 e_stop=0 清除急停 (dashboard 被誤觸 E 時救急用)
-- `sim_state.py` — 讀物理引擎原始 JSON 狀態 (ground truth)
-- `attack_via_c2.py` — 開發用, 直接對 Mythic GraphQL 下 task; 不建議 demo 時用
+- `dump_registers.py`: 讀 PLC 暫存器/coil, 確認位址對應 (Phase 5 用)
+- `watch_plant.py`: 每秒讀物理引擎狀態, 觀察壓力變化 (Phase 7 用)
+- `clear_estop.py`: 對物理引擎送 e_stop=0 清除急停 (dashboard 被誤觸 E 時救急用)
+- `sim_state.py`: 讀物理引擎原始 JSON 狀態 (ground truth)
+- `attack_via_c2.py`: 開發用, 直接對 Mythic GraphQL 下 task; 不建議 demo 時用
   (見附錄)
 
 
-## 附錄 — 用 Python 腳本走 GraphQL API (開發用)
+## 附錄: 用 Python 腳本走 GraphQL API (開發用)
 
 `attack_via_c2.py` 做的事跟 Phase 6 手動貼指令等價, 只是繞過 UI 直接對 Mythic
 GraphQL endpoint 下 createTask mutation, 再輪詢 task 結果印出來。
@@ -254,7 +254,7 @@ GraphQL endpoint 下 createTask mutation, 再輪詢 task 結果印出來。
 - 開發階段快速迭代 payload (改一次跑一次, 不用每次都手貼進 UI)
 - 事前驗證整條攻擊鏈還通 (JWT 沒過期、callback 還活著、PLC 還在響應)
 
-demo 現場用它就失掉核心敘事 — 觀眾只看到你螢幕上一個 Python 腳本在跑, 完全看不見
+demo 現場用它就失掉核心敘事。觀眾只看到你螢幕上一個 Python 腳本在跑, 完全看不見
 Mythic UI, C2 的存在感直接歸零。這條路等於自己騙自己攻擊透過 C2, 實際上跳過了
 operator 唯一該碰的介面。所以正式 demo 走 Phase 6, 這個腳本只在準備階段用。
 

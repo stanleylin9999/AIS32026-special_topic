@@ -24,18 +24,18 @@ the attack chain at anything outside the two local Compose stacks.
 
 ## Where to look
 
-- `README.md` — port map (both stacks), attack path summary, ops gotchas, deadline
-- `SETUP.md` — build both stacks from a clean Linux host (in 正體中文)
-- `ATTACK_WALKTHROUGH.md` — the seven-phase attack tutorial for the live demo
-- `PROJECT_SCOPE.md` — deliverables, day-by-day schedule, and the verified environment
+- `README.md`: port map (both stacks), attack path summary, ops gotchas, deadline
+- `SETUP.md`: build both stacks from a clean Linux host (in 正體中文)
+- `ATTACK_WALKTHROUGH.md`: the seven-phase attack tutorial for the live demo
+- `PROJECT_SCOPE.md`: deliverables, day-by-day schedule, and the verified environment
   facts the presentation cites (PLC interlocks, register persistence tiers, IDS blind
   spot). Anything claimed in slides should trace back to a fact recorded here.
-- `team/` — the four-person work split. `team/README.md` holds the Go interface
+- `team/`: the four-person work split. `team/README.md` holds the Go interface
   contract between the protocol and sequence workstreams; it is the single place that
   contract is defined, so edit it there rather than restating it in a role doc.
-- `GRFICSv3/CLAUDE.md` — GRFICS architecture (three networks, container roles,
+- `GRFICSv3/CLAUDE.md`: GRFICS architecture (three networks, container roles,
   fork-specific deviations from upstream Fortiphyd)
-- `Mythic/README.md` — Mythic is a third-party framework we operate but don't modify
+- `Mythic/README.md`: Mythic is a third-party framework we operate but don't modify
   the source of; treat it as a black box driven via `mythic-cli` and the operator UI
 
 ## Commands (spanning both stacks)
@@ -70,7 +70,7 @@ those dirs on a fresh install with no real operation data.
 
 ## docker-compose overrides append lists
 
-`docker-compose.override.yml` merges `ports:` by appending, not replacing — you can
+`docker-compose.override.yml` merges `ports:` by appending, not replacing. You can
 silently end up with the same host port bound twice. Always verify with
 `docker compose config` before assuming an override took effect. Port choices belong
 in the tracked compose file, not in a machine-specific override (which shouldn't
@@ -84,7 +84,7 @@ Three independent repos, three independent remotes:
 - `GRFICSv3/` (fork at `abb00717/GRFICSv3`)
 - `Mythic/` (fork at `abb00717/Mythic`)
 
-Commits/PRs stay in the repo that owns the changed file — e.g. edits to
+Commits/PRs stay in the repo that owns the changed file, e.g. edits to
 `docker-compose.yml` under `GRFICSv3/` never come to this meta-repo. Only edits to
 files directly under `ICS_C2_Demo/` (the markdown docs, `frostygoop-rewrite/`,
 `.gitignore`, `.claude/`) belong here.

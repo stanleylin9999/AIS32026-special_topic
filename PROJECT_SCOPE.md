@@ -51,7 +51,7 @@ FrostyGoop 本身是獨立 CLI 工具，攻擊者取得立足點後手動執行�
 
 ### 協定覆蓋範圍決定攻擊性質（本專題最主要的技術結論）
 
-樣本只有 FC03/06/16，碰不到 coil。這限制了它能做的攻擊種類：切換 `manual_mode` 需要 FC05，做不到，所以真實 FrostyGoop 在這台 PLC 上唯一能走的是 HR1026（`pressure_sp`）——holding register、FC06 可寫、不需 manual_mode，由自動控制迴路自己把壓力推上去，製程表面上全程正常。
+樣本只有 FC03/06/16，碰不到 coil。這限制了它能做的攻擊種類：切換 `manual_mode` 需要 FC05，做不到，所以真實 FrostyGoop 在這台 PLC 上唯一能走的是 HR1026（`pressure_sp`）: holding register、FC06 可寫、不需 manual_mode，由自動控制迴路自己把壓力推上去，製程表面上全程正常。
 
 我們的重寫版刻意補上 FC01/FC05，於是多開了第二類攻擊：置位 coil 0 繞過整個控制迴路，閥門開度直接由攻擊者指定（即現行 demo 的路徑）。
 
@@ -103,11 +103,11 @@ implant 容器 `ot-workstation-implant`：uid 0、x86_64、Debian 13 glibc、`/t
 
 ### 量測與素材
 
-- **暫存器三層行為實驗** — 對 HR10-13 / HR1026 / HR1024 分別寫入後高頻讀回，記錄留存與否。
-- **掃描週期論述** — 20ms 出自原始碼 `T#20ms`。可展示的實測結論是「寫入 HR1024 的值不留存，一個掃描週期內即消失」，不宣稱量出精確毫秒數。
-- **Suricata 離線重放** — host bridge 側錄後餵給 router 內 Suricata，產出 `fast.log` 對照。
-- **三欄比較表** — 真實 FrostyGoop 逆向結果 / 重寫版 / 差異與原因。已知的刻意差異：新增 FC01/FC05 coil 能力（開啟直接接管執行器的第二類攻擊，是本專題「改進」的實質內容）、平台從 Windows PE 換成 Linux ELF（環境如此，與功能無關）、自行實作 Modbus 而非包 `rolfl/modbus`、接上 C2 tasking 取代人工投放與人工回收 log。
-- **封包並排** — 課程 PDF 那組 FC06 request/response 截圖（address 87、value 88）對重寫版打同一組參數的側錄。兩邊 function code、reference number、register value 應逐欄相符。
+- **暫存器三層行為實驗**: 對 HR10-13 / HR1026 / HR1024 分別寫入後高頻讀回，記錄留存與否。
+- **掃描週期論述**: 20ms 出自原始碼 `T#20ms`。可展示的實測結論是「寫入 HR1024 的值不留存，一個掃描週期內即消失」，不宣稱量出精確毫秒數。
+- **Suricata 離線重放**: host bridge 側錄後餵給 router 內 Suricata，產出 `fast.log` 對照。
+- **三欄比較表**: 真實 FrostyGoop 逆向結果 / 重寫版 / 差異與原因。已知的刻意差異：新增 FC01/FC05 coil 能力（開啟直接接管執行器的第二類攻擊，是本專題「改進」的實質內容）、平台從 Windows PE 換成 Linux ELF（環境如此，與功能無關）、自行實作 Modbus 而非包 `rolfl/modbus`、接上 C2 tasking 取代人工投放與人工回收 log。
+- **封包並排**: 課程 PDF 那組 FC06 request/response 截圖（address 87、value 88）對重寫版打同一組參數的側錄。兩邊 function code、reference number、register value 應逐欄相符。
 
 ### 文件與簡報
 
@@ -163,16 +163,16 @@ implant 容器 `ot-workstation-implant`：uid 0、x86_64、Debian 13 glibc、`/t
 
 ## Demo 前檢查清單
 
-- **`192.168.95.1` 位址衝突**：host bridge `br-ce2d1beff6dd` 與 router 的 eth1 secondary 都是 `192.168.95.1`，而 C2 callback 正好打這個位址。目前 ARP 由 host 勝出所以正常，但重啟 router 或 implant 後可能翻轉，callback 會安靜失敗（連到 router 的 80）。以 `docker exec ot-workstation-implant cat /proc/net/arp` 確認對應 MAC。
-- **UFW**：確認 bridge 到 host 的 allow rule 仍在，否則 callback 逾時而非拒絕連線。
-- **JWT**：Mythic operator 介面 token 會過期，demo 前重新登入。
-- **鍵盤 E**：GRFICS 3D 介面按 E 會觸發 e-stop，demo 時避免焦點停在該視窗。
-- **重置順序是 `plc` 然後 `simulation`，不能只重啟後者**：`restart simulation` 只重置物理模型，PLC 會繼續握著 `manual_mode` 與被改過的設定值（實測過一次開場就是 `manual_mode = 1`、HR10-13 還是上次攻擊值，代表過去每次 demo 的初始狀態都是未知的）。反過來只重啟 `plc` 會打斷 simulation 的 Modbus 連線，壓力讀值卡在 65535 飽和。兩者都重啟、`plc` 先，重連約需 30 秒，之後壓力還要幾分鐘才爬回 2700 kPa 基線——彩排時把這段時間算進去。
+- **`192.168.95.1` 位址衝突**: host bridge `br-ce2d1beff6dd` 與 router 的 eth1 secondary 都是 `192.168.95.1`，而 C2 callback 正好打這個位址。目前 ARP 由 host 勝出所以正常，但重啟 router 或 implant 後可能翻轉，callback 會安靜失敗（連到 router 的 80）。以 `docker exec ot-workstation-implant cat /proc/net/arp` 確認對應 MAC。
+- **UFW**: 確認 bridge 到 host 的 allow rule 仍在，否則 callback 逾時而非拒絕連線。
+- **JWT**: Mythic operator 介面 token 會過期，demo 前重新登入。
+- **鍵盤 E**: GRFICS 3D 介面按 E 會觸發 e-stop，demo 時避免焦點停在該視窗。
+- **重置順序是 `plc` 然後 `simulation`，不能只重啟後者**: `restart simulation` 只重置物理模型，PLC 會繼續握著 `manual_mode` 與被改過的設定值（實測過一次開場就是 `manual_mode = 1`、HR10-13 還是上次攻擊值，代表過去每次 demo 的初始狀態都是未知的）。反過來只重啟 `plc` 會打斷 simulation 的 Modbus 連線，壓力讀值卡在 65535 飽和。兩者都重啟、`plc` 先，重連約需 30 秒，之後壓力還要幾分鐘才爬回 2700 kPa 基線。彩排時把這段時間算進去。
 
 ## 不做的事
 
-- **協定轉換層** — 環境只有 Modbus 一種協定，沒有第二種語義需要互轉，agent 直接構造封包已可行。
-- **獨立轉譯容器** — Mythic 的 Translation Container 在架構上負責 server 與 agent 之間的訊息格式轉換，兩端都不是攻擊目標；對目標發協定封包在設計上屬於 agent 職責。且該容器會生在 `mythic_default` 網段，與 `plc` 所在的 `b-ics-net` 不通，要通就得在 host 手動 `docker network connect`，那是架設者權限而非攻擊者能力。原提案的能力需求本身成立，全部改為實作在 agent 側。
-- **掃描週期時序控制** — 攻擊路徑上的 `manual_mode` 與 %QW10-13 在整支程式中只被讀取、從未被寫入，不存在邏輯覆蓋，沒有需要贏的競速。
-- **流量規避工程** — 改為量測盲區。不宣稱「零高危告警」。
-- **多 PLC 規模化驗證** — 環境只有一台。
+- **協定轉換層**: 環境只有 Modbus 一種協定，沒有第二種語義需要互轉，agent 直接構造封包已可行。
+- **獨立轉譯容器**: Mythic 的 Translation Container 在架構上負責 server 與 agent 之間的訊息格式轉換，兩端都不是攻擊目標；對目標發協定封包在設計上屬於 agent 職責。且該容器會生在 `mythic_default` 網段，與 `plc` 所在的 `b-ics-net` 不通，要通就得在 host 手動 `docker network connect`，那是架設者權限而非攻擊者能力。原提案的能力需求本身成立，全部改為實作在 agent 側。
+- **掃描週期時序控制**: 攻擊路徑上的 `manual_mode` 與 %QW10-13 在整支程式中只被讀取、從未被寫入，不存在邏輯覆蓋，沒有需要贏的競速。
+- **流量規避工程**: 改為量測盲區。不宣稱「零高危告警」。
+- **多 PLC 規模化驗證**: 環境只有一台。

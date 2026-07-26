@@ -30,7 +30,7 @@ git lfs install
 ./build.sh
 ```
 
-只需要跑 `simulation`、`plc`、`hmi`、`router` 四個服務 —— `workstation`/`attacker`/`caldera`/`wazuh` 這個 fork 雖然還留著但故意不用，攻擊工具改用 Mythic 那邊：
+只需要跑 `simulation`、`plc`、`hmi`、`router` 四個服務。`workstation`/`attacker`/`caldera`/`wazuh` 這個 fork 雖然還留著但故意不用，攻擊工具改用 Mythic 那邊：
 
 ```bash
 docker compose up -d simulation plc hmi router
@@ -44,7 +44,7 @@ make
 sudo ./mythic-cli start
 ```
 
-首次啟動會自動生成 `.env`（含隨機密碼），`.env` 沒有進 git，每台機器各自獨立。啟動後把 port 改成跟 `README.md` 的 port 對照表一致 —— 至少要改：
+首次啟動會自動生成 `.env`（含隨機密碼），`.env` 沒有進 git，每台機器各自獨立。啟動後把 port 改成跟 `README.md` 的 port 對照表一致，至少要改：
 
 - `NGINX_PORT` -> `8080`（C2 操作介面）
 - `HASURA_PORT` -> `8082`
@@ -65,7 +65,7 @@ sudo ./mythic-cli install github https://github.com/MythicAgents/poseidon
 sudo ./mythic-cli install github https://github.com/MythicC2Profiles/http
 ```
 
-C2 profile 和 agent 這類第三方服務，mythic-cli 裝的時候一律用 `network_mode: host`，不用另外設定 —— 這也是 HTTP C2 能透過 gateway IP 打到 GRFICS `b-ics-net` 而不用手動接兩個 Compose 專案網路的原因，細節見 `README.md` 的「攻擊路徑」段落。
+C2 profile 和 agent 這類第三方服務，mythic-cli 裝的時候一律用 `network_mode: host`，不用另外設定。這也是 HTTP C2 能透過 gateway IP 打到 GRFICS `b-ics-net` 而不用手動接兩個 Compose 專案網路的原因，細節見 `README.md` 的「攻擊路徑」段落。
 
 ## 驗證
 
