@@ -4,3 +4,8 @@ Mythic/
 # Live malware samples under analysis. Never push these to a remote — GitHub
 # flags them and redistributing the binary serves no purpose the RE notes don't.
 lab/
+
+# Third-party course material, not authored by this team. Redistribution isn't ours to decide.
+AIS3 2026 跨域資訊安全 下半場.pdf
+從近年攻擊案例認識工業控制系統安全.pdf
+lab_password-is-ais3.zip
