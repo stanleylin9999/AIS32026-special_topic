@@ -14,9 +14,11 @@ FrostyGoop 本身是獨立 CLI 工具，攻擊者取得立足點後手動執行�
 
 ## 已驗證的環境事實
 
-以下全部實際讀原始碼或量測得出，非理論推估。簡報可直接引用。
+以下除「FrostyGoop 樣本事實」一節外，都是實際量測或直接讀 GRFICS 原始碼得出，非理論推估，簡報可直接引用。該節的信任層級不同，見其標註。
 
 ### FrostyGoop 樣本事實（`lab/FrostyGoop/`，Ghidra 專案 `FrostyGoop`）
+
+**本節尚未人工複核。** 內容由另一個 agent 透過 ghidra-mcp 產出，還沒有人回頭對照 Ghidra 確認。簡報引用前、以及重寫版拿它當實作依據前，都要先驗過。負責人與期限見 `team/RE_MEASUREMENT.md`。
 
 `file` 判定為 PE32+ Windows x86-64 console，SHA256 與檔名相符。`go version -m` 直接吐出完整 build metadata：go1.20.4、`CGO_ENABLED=0`、`GOARCH=amd64`、`GOOS=windows`、module path `github.com/rolfl/modbus/CleintTCP`，相依 `github.com/rolfl/modbus`、`github.com/hsblhsn/queues`、`gopkg.in/logex.v1`。`CleintTCP` 是作者把 Client 拼錯，可當樣本身分佐證。
 
@@ -39,11 +41,11 @@ FrostyGoop 本身是獨立 CLI 工具，攻擊者取得立足點後手動執行�
 
 ### 暫存器行為分三層（「攻擊者為何選這個不選那個」的素材）
 
-| 位址             | 變數                                           | 行為                                                                                                                              |
-| ---------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| coil 0 + HR10-13 | `manual_mode`, `f1/f2/purge/product_manual_sp` | 寫入持久，直接接管閥門開度。但 manual_mode 旗標在 HMI 上可見                                                                      |
+| 位址             | 變數                                           | 行為                                                                                                                |
+| ---------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| coil 0 + HR10-13 | `manual_mode`, `f1/f2/purge/product_manual_sp` | 寫入持久，直接接管閥門開度。但 manual_mode 旗標在 HMI 上可見                                                        |
 | HR1026 (%MW2)    | `pressure_sp`                                  | 全程只被 `LIMIT()` 夾值、從未被重新賦值。已實測寫入持久，且不需切 manual_mode，由自動控制迴路自己把壓力推過破壞門檻 |
-| HR1024 (%MW0)    | `product_flow_setpoint`                        | 第 227 行 `product_flow_setpoint := 30000;` 無條件執行，寫入不留存                                                                |
+| HR1024 (%MW0)    | `product_flow_setpoint`                        | 第 227 行 `product_flow_setpoint := 30000;` 無條件執行，寫入不留存                                                  |
 
 同一台 PLC 上有些位址寫了就穩、有些寫了就被吃掉，這是惡意程式需要先讀取偵察的直接理由，也對應 FrostyGoop 先 FC03 讀再寫的行為模式。
 
@@ -115,7 +117,7 @@ implant 容器 `ot-workstation-implant`：uid 0、x86_64、Debian 13 glibc、`/t
 
 簡報 7/30 14:00 繳交、demo 20:30。**簡報裡的每一個數字都必須在 7/29 前量測完成**，7/30 只留修字與彩排，不做新實驗。
 
-### 7/25（今天，剩半天）
+### 7/25
 
 - [x] 確認樣本與逆向素材在手：`lab/FrostyGoop/` 有樣本與自製 `fake_modbus_slave.py`，Ghidra 專案已載入，封包對照素材取自課程 PDF 的 Wireshark 截圖（`-ip 127.0.0.1 -mode write -address 87 -value 88` 那組 FC06 request/response）
 - [x] 決定 Go 程式碼落點並建目錄，同時更新 `CLAUDE.md` 的 git 規則
