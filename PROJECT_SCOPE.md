@@ -73,6 +73,8 @@ FrostyGoop 本身是獨立 CLI 工具，攻擊者取得立足點後手動執行�
 
 爬升速率也是 demo 節奏的資訊：**隱蔽的路徑同時也是慢的路徑。** 直接接管執行器快而明顯，改 setpoint 慢而安靜，這是真實的權衡而不是修辭。
 
+> 簡單來說，一個把安全控制器關掉，然後讓他一直上升到爆炸。另一個就是把安全控制器的安全閥值設定到我們要的目標值。
+
 ### 偵測盲區
 
 `router` 容器內 Suricata 持續運行，已載入 Digital Bond Quickdraw SCADA 規則集（58 條 alert），其中包含 `SCADA_IDS: Modbus TCP - Unauthorized Write Request to a PLC`，正對應我們的攻擊行為。
