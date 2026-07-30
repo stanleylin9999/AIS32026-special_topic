@@ -6,6 +6,13 @@ import (
 	"errors"
 )
 
+var (
+	errInvalidCount    = errors.New("invalid count")
+	errInvalidAddress  = errors.New("invalid address")
+	errInvalidValue    = errors.New("invalid value")
+	errResponseTooShort = errors.New("response too short")
+)
+
 // The five function codes the rewrite speaks. FC03/06/16 are what the sample
 // had; FC01/FC05 are ours. That split is the project's central claim, so the
 // coil calls stay visibly separate rather than folded into a generic helper.
@@ -13,34 +20,25 @@ import (
 // ReadCoils issues FC01.
 func (c *Conn) ReadCoils(addr, count uint16) ([]bool, error) {
 	if count < 1 || count > 2000 {
-		return nil, errors.New("invalid coil count")
+		return nil, errInvalidCount
 	}
-
-	pdu := make([]byte, 5)
-	pdu[0] = 0x01 // FC01
-	binary.BigEndian.PutUint16(pdu[1:3], addr)
-	binary.BigEndian.PutUint16(pdu[3:5], count)
-
+	pdu := []byte{0x01, byte(addr >> 8), byte(addr), byte(count >> 8), byte(count)}
 	resp, err := c.sendRecv(context.Background(), pdu)
 	if err != nil {
 		return nil, err
 	}
-
 	if len(resp) < 2 {
-		return nil, errors.New("invalid FC01 response length")
+		return nil, errResponseTooShort
 	}
 	if resp[0] != 0x01 {
-		return nil, errors.New("unexpected function code in response")
+		return nil, errors.New("function code mismatch in response")
 	}
-
 	byteCount := int(resp[1])
-	expectedBytes := (int(count) + 7) / 8
-	if byteCount != expectedBytes {
-		return nil, errors.New("unexpected byte count in FC01 response")
+	if len(resp) != 2+byteCount {
+		return nil, errors.New("truncated response body")
 	}
-
-	coils := make([]bool, count)
 	data := resp[2:]
+	coils := make([]bool, count)
 	for i := 0; i < int(count); i++ {
 		byteIdx := i / 8
 		bitIdx := i % 8
@@ -48,145 +46,127 @@ func (c *Conn) ReadCoils(addr, count uint16) ([]bool, error) {
 			coils[i] = (data[byteIdx] & (1 << bitIdx)) != 0
 		}
 	}
-
 	return coils, nil
 }
 
 // ReadHolding issues FC03.
 func (c *Conn) ReadHolding(addr, count uint16) ([]uint16, error) {
 	if count < 1 || count > 125 {
-		return nil, errors.New("invalid register count")
+		return nil, errInvalidCount
 	}
-
-	pdu := make([]byte, 5)
-	pdu[0] = 0x03 // FC03
-	binary.BigEndian.PutUint16(pdu[1:3], addr)
-	binary.BigEndian.PutUint16(pdu[3:5], count)
-
+	pdu := []byte{0x03, byte(addr >> 8), byte(addr), byte(count >> 8), byte(count)}
 	resp, err := c.sendRecv(context.Background(), pdu)
 	if err != nil {
 		return nil, err
 	}
-
 	if len(resp) < 2 {
-		return nil, errors.New("invalid FC03 response length")
+		return nil, errResponseTooShort
 	}
 	if resp[0] != 0x03 {
-		return nil, errors.New("unexpected function code in response")
+		return nil, errors.New("function code mismatch in response")
 	}
-
 	byteCount := int(resp[1])
-	if byteCount != int(count)*2 {
-		return nil, errors.New("unexpected byte count in FC03 response")
+	if len(resp) != 2+byteCount || byteCount != int(count)*2 {
+		return nil, errors.New("truncated response body")
 	}
-
-	values := make([]uint16, count)
 	data := resp[2:]
+	regs := make([]uint16, count)
 	for i := 0; i < int(count); i++ {
-		values[i] = binary.BigEndian.Uint16(data[i*2 : i*2+2])
+		regs[i] = binary.BigEndian.Uint16(data[i*2:])
 	}
-
-	return values, nil
+	return regs, nil
 }
 
 // WriteCoil issues FC05. On the wire a coil takes 0xFF00 or 0x0000, not 1/0.
 func (c *Conn) WriteCoil(addr uint16, on bool) error {
-	value := uint16(0x0000)
+	val := uint16(0x0000)
 	if on {
-		value = 0xFF00
+		val = 0xFF00
 	}
-
-	pdu := make([]byte, 5)
-	pdu[0] = 0x05 // FC05
-	binary.BigEndian.PutUint16(pdu[1:3], addr)
-	binary.BigEndian.PutUint16(pdu[3:5], value)
-
+	pdu := []byte{0x05, byte(addr >> 8), byte(addr), byte(val >> 8), byte(val)}
 	resp, err := c.sendRecv(context.Background(), pdu)
 	if err != nil {
 		return err
 	}
-
 	if len(resp) != 5 {
-		return errors.New("invalid FC05 response length")
+		return errResponseTooShort
 	}
-	if resp[0] != 0x05 {
-		return errors.New("unexpected function code in response")
+	if resp[0] != 0x05 || binary.BigEndian.Uint16(resp[1:3]) != addr || binary.BigEndian.Uint16(resp[3:5]) != val {
+		return errors.New("write coil response mismatch")
 	}
-
-	// Echo of request
-	respAddr := binary.BigEndian.Uint16(resp[1:3])
-	respValue := binary.BigEndian.Uint16(resp[3:5])
-	if respAddr != addr || respValue != value {
-		return errors.New("FC05 response does not match request")
-	}
-
 	return nil
 }
 
 // WriteSingle issues FC06.
 func (c *Conn) WriteSingle(addr, value uint16) error {
-	pdu := make([]byte, 5)
-	pdu[0] = 0x06 // FC06
-	binary.BigEndian.PutUint16(pdu[1:3], addr)
-	binary.BigEndian.PutUint16(pdu[3:5], value)
-
+	pdu := []byte{0x06, byte(addr >> 8), byte(addr), byte(value >> 8), byte(value)}
 	resp, err := c.sendRecv(context.Background(), pdu)
 	if err != nil {
 		return err
 	}
-
 	if len(resp) != 5 {
-		return errors.New("invalid FC06 response length")
+		return errResponseTooShort
 	}
-	if resp[0] != 0x06 {
-		return errors.New("unexpected function code in response")
+	if resp[0] != 0x06 || binary.BigEndian.Uint16(resp[1:3]) != addr || binary.BigEndian.Uint16(resp[3:5]) != value {
+		return errors.New("write single response mismatch")
 	}
-
-	// Echo of request
-	respAddr := binary.BigEndian.Uint16(resp[1:3])
-	respValue := binary.BigEndian.Uint16(resp[3:5])
-	if respAddr != addr || respValue != value {
-		return errors.New("FC06 response does not match request")
-	}
-
 	return nil
 }
 
 // WriteMultiple issues FC16.
 func (c *Conn) WriteMultiple(addr uint16, values []uint16) error {
-	count := len(values)
+	count := uint16(len(values))
 	if count < 1 || count > 123 {
-		return errors.New("invalid register count")
+		return errInvalidCount
 	}
-
 	byteCount := count * 2
 	pdu := make([]byte, 6+byteCount)
-	pdu[0] = 0x10 // FC16
-	binary.BigEndian.PutUint16(pdu[1:3], addr)
-	binary.BigEndian.PutUint16(pdu[3:5], uint16(count))
+	pdu[0] = 0x10
+	pdu[1] = byte(addr >> 8)
+	pdu[2] = byte(addr)
+	pdu[3] = byte(count >> 8)
+	pdu[4] = byte(count)
 	pdu[5] = byte(byteCount)
-
 	for i, v := range values {
-		binary.BigEndian.PutUint16(pdu[6+i*2:6+i*2+2], v)
+		binary.BigEndian.PutUint16(pdu[6+i*2:], v)
 	}
-
 	resp, err := c.sendRecv(context.Background(), pdu)
 	if err != nil {
 		return err
 	}
-
 	if len(resp) != 5 {
-		return errors.New("invalid FC16 response length")
+		return errResponseTooShort
 	}
-	if resp[0] != 0x10 {
-		return errors.New("unexpected function code in response")
+	if resp[0] != 0x10 || binary.BigEndian.Uint16(resp[1:3]) != addr || binary.BigEndian.Uint16(resp[3:5]) != count {
+		return errors.New("write multiple response mismatch")
 	}
-
-	respAddr := binary.BigEndian.Uint16(resp[1:3])
-	respCount := binary.BigEndian.Uint16(resp[3:5])
-	if respAddr != addr || respCount != uint16(count) {
-		return errors.New("FC16 response does not match request")
-	}
-
 	return nil
+}
+
+// ReadInput issues FC04.
+func (c *Conn) ReadInput(addr, count uint16) ([]uint16, error) {
+	if count < 1 || count > 125 {
+		return nil, errInvalidCount
+	}
+	pdu := []byte{0x04, byte(addr >> 8), byte(addr), byte(count >> 8), byte(count)}
+	resp, err := c.sendRecv(context.Background(), pdu)
+	if err != nil {
+		return nil, err
+	}
+	if len(resp) < 2 {
+		return nil, errResponseTooShort
+	}
+	if resp[0] != 0x04 {
+		return nil, errors.New("function code mismatch in response")
+	}
+	byteCount := int(resp[1])
+	if len(resp) != 2+byteCount || byteCount != int(count)*2 {
+		return nil, errors.New("truncated response body")
+	}
+	data := resp[2:]
+	regs := make([]uint16, count)
+	for i := 0; i < int(count); i++ {
+		regs[i] = binary.BigEndian.Uint16(data[i*2:])
+	}
+	return regs, nil
 }
