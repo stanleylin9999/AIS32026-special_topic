@@ -12,8 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/abb00717/frostygoop-rewrite/internal/attack"
-	"github.com/abb00717/frostygoop-rewrite/internal/modbus"
+	
 )
 
 // Modes fall into two tiers. The primitives issue exactly one function code,
