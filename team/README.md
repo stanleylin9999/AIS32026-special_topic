@@ -1,9 +1,8 @@
 # 分工與介面契約
 
-四個人平行作業的共用約定。每個人另有一份自己的工作文件，但**介面只在這份定義一次**，
-各角色文件不重複抄寫，避免到 7/28 出現四份互相矛盾的版本。
+四個人平行作業的共用約定，每個人另有一份自己的工作文件
 
-專題目標、已驗證事實、日程表與 demo 檢查清單一律看 `../PROJECT_SCOPE.md`，這份不重抄。
+專題目標、已驗證事實、日程表與 demo 檢查清單一律看 `../PROJECT_SCOPE.md`。
 
 ## 誰做什麼
 
@@ -14,8 +13,8 @@
 | 逆向核對與量測 | `RE_MEASUREMENT.md` | Ghidra 報告複核、暫存器行為實驗、Suricata 側錄             |
 | 簡報與文件     | `SLIDES.md`         | 三欄比較表、ATT&CK 對應、簡報與彩排                        |
 
-四條線可同時開工。唯一的硬相依是協定層要先交出 `internal/modbus` 的可用實作，序列層才
-能真的跑起來；但序列層可以先照下面的簽章寫殼子，不用等。
+四條線可同時開工，唯一的相依是協定層要先交出 `internal/modbus` 的可用實作，序列層才
+能真的跑起來。
 
 ## 程式碼落點與檔案所有權
 
@@ -32,15 +31,11 @@ frostygoop-rewrite/
   testdata/fake_slave.py        [協定層] 本機測試用假 PLC，支援全部五個 FC
 ```
 
-**一個檔案只有一個負責人。** 需要動不屬於自己的檔案時，先講一聲，不要直接改，不然 merge
-會很痛。Go 版本用 host 上的 1.26.0，建置目標固定 `CGO_ENABLED=0 GOOS=linux GOARCH=amd64`。
-
-上面每個檔案都已經建好可編譯的空殼並提交，`go build ./...` 現在就過，靜態 ELF 也產得出
-來。直接把 stub 換成實作即可，**不要自己 `go mod init`**，`go.mod` 已經在了。
+**一個檔案只有一個負責人。** 需要動不屬於自己的檔案時，先講一聲，不要直接改，Go 版本用 host 上的 1.26.0，建置目標固定 `CGO_ENABLED=0 GOOS=linux GOARCH=amd64`。
 
 ## 介面契約
 
-協定層負責產出下面這組簽章，序列層照這組寫。**這是兩邊唯一的接觸面。**
+協定層負責產出下面這組簽章，序列層照這組寫。
 
 ```go
 package modbus
@@ -62,7 +57,7 @@ func (c *Conn) WriteSingle(addr, value uint16) error              // FC06
 func (c *Conn) WriteMultiple(addr uint16, values []uint16) error  // FC16
 ```
 
-重試與逾時包在 `Conn` 裡，序列層不要自己再實作一層。Modbus exception response 回成
+重試與逾時包在 `Conn` 裡，序列層不要自己再實作一層，Modbus exception response 回成
 Go 的 `error`，序列層據此判斷成敗、決定要不要回滾。
 
 序列層負責產出：
@@ -90,7 +85,6 @@ func PressureSetpoint(c *modbus.Conn, value uint16) (*Result, error)
 
 ## `-mode` 對應表
 
-`cmd/frostygoop/main.go` 由協定層擁有，這張表是它跟序列層的第二個接觸面。
 
 mode 分兩層。**primitive** 只送一個 function code，對應樣本用 mode 字串挑 Code 的做法；
 **sequence** 跑一整套含前置檢查、讀回驗證與回滾的序列，是我們才有的。
@@ -105,11 +99,10 @@ mode 分兩層。**primitive** 只送一個 function code，對應樣本用 mode
 | `takeover`   | `attack.CoilTakeover`     | sequence  | 我們新增 |
 | `setpoint`   | `attack.PressureSetpoint` | sequence  | 我們新增 |
 
-`write-coil` 是單一個 FC05，**不會**幫你做 `run_bit` 前置檢查或回滾；要完整序列請用
-`takeover`。這條界線劃在這裡，是為了讓 demo 能分別展示「原版做得到的原始操作」與「重寫
-版才有的編排」。
+`write-coil` 是單一個 FC05，**不會**幫你做 `run_bit` 前置檢查或回滾，要完整序列請用
+`takeover`。
 
-樣本原有的那三列（含「無法辨識的 mode 一律落回 FC03」這個行為要不要保留）在 Ghidra 複核
+樣本原有的那三列（含無法辨識的 mode 一律落回 FC03這個行為要不要保留）在 Ghidra 複核
 完成前都是暫定的，見 `RE_MEASUREMENT.md`。新增的四列是我們自己的設計，不受複核影響，可
 以直接照著寫。
 
@@ -117,7 +110,7 @@ mode 分兩層。**primitive** 只送一個 function code，對應樣本用 mode
 
 每天收工前各自在群組回報一句：做完什麼、卡在哪、有沒有東西擋到別人。重點是第三項。
 
-介面契約要改（例如發現某個簽章不夠用），改之前先講，因為它同時綁著兩個人。改完更新這
+介面契約要改（例如發現某個簽章不夠用），改之前先講，因為它同時綁著兩個人，改完更新這
 份文件，不要只在群組講完就算數。
 
 7/28 20:00 code freeze，之後只修 bug 不加功能。
