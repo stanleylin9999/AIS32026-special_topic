@@ -1,32 +1,30 @@
 # 專題範圍與工作分解
 
-AIS3 2026 專題「OT/ICS 惡意程式及 C2 實作」。簡報繳交 2026-07-30 14:00，現場 demo 20:30-20:45。
+AIS3 2026 專題「OT/ICS 惡意程式及 C2 實作」
 
 ## 專題定位
 
 ### FrostyGoop 逆向、重實作並接上 C2
 
-FrostyGoop 本身是獨立 CLI 工具，攻擊者取得立足點後手動執行、打完結束，沒有回連也沒有持續控制。我們根據自己逆向出的程式邏輯重新實作功能對等版本，接上 Mythic 完整 C2 生命週期（payload build、callback、tasking、operator 介面），實際打進 GRFICS 讓反應器壓力失控。
+FrostyGoop 本身是獨立 CLI 工具，攻擊者取得立足點後手動執行，沒有回連也沒有持續控制，我們根據自己逆向出的程式邏輯重新實作功能對等版本，接上 Mythic C2，實際打進 GRFICS 讓反應器壓力失控。
 
-雖然原本在 C2 我們就可以透過 root shell 做到遠端執行攻擊，但它不知道 Modbus 是什麼、不知道哪個暫存器寫下去有用；惡意程式封裝的是攻擊者對目標領域的知識。真實 FrostyGoop 攻擊者當時同樣早有立足點。
+雖然原本在 C2 我們就可以透過 root shell 做到遠端執行攻擊，但它不知道 Modbus 是什麼、不知道哪個暫存器寫下去有用，惡意程式封裝的是攻擊者對目標領域的知識，真實 FrostyGoop 攻擊者當時同樣早有立足點。
 
 因為手上有原始樣本的逆向結果與封包側錄，可以做逐項對照包括真實行為、重寫版行為、差異與原因，以及兩者封包並排比較。
 
 ## 已驗證的環境事實
 
-以下除「FrostyGoop 樣本事實」一節外，都是實際量測或直接讀 GRFICS 原始碼得出，非理論推估，簡報可直接引用。該節的信任層級不同，見其標註。
+以下除了 FrostyGoop 樣本事實外，都是實際量測或直接讀 GRFICS 原始碼得出，非理論推估。
 
 ### FrostyGoop 樣本事實（`lab/FrostyGoop/`，Ghidra 專案 `FrostyGoop`）
 
-**本節尚未人工複核。** 內容由另一個 agent 透過 ghidra-mcp 產出，還沒有人回頭對照 Ghidra 確認。簡報引用前、以及重寫版拿它當實作依據前，都要先驗過。負責人與期限見 `team/RE_MEASUREMENT.md`。
+`file` 判定為 PE32+ Windows x86-64 console，`go version -m` 直接吐出完整 build metadata：go1.20.4、`CGO_ENABLED=0`、`GOARCH=amd64`、`GOOS=windows`、module path `github.com/rolfl/modbus/CleintTCP`，相依 `github.com/rolfl/modbus`、`github.com/hsblhsn/queues`、`gopkg.in/logex.v1`。`CleintTCP` 是作者把 Client 拼錯，可當樣本身分佐證。
 
-`file` 判定為 PE32+ Windows x86-64 console，SHA256 與檔名相符。`go version -m` 直接吐出完整 build metadata：go1.20.4、`CGO_ENABLED=0`、`GOARCH=amd64`、`GOOS=windows`、module path `github.com/rolfl/modbus/CleintTCP`，相依 `github.com/rolfl/modbus`、`github.com/hsblhsn/queues`、`gopkg.in/logex.v1`。`CleintTCP` 是作者把 Client 拼錯，可當樣本身分佐證。
+作者沒有自己實作 Modbus，是直接包一個開源函式庫，DWARF 還留著開發者的建置路徑 `C:/Users/Hiro Kirashi/Documents/Projects/Golang/go_modbus/CleintTCP/main.go`，含行號（`main` 在 437、`MbConfig.write` 在 116、`Task.taskWorker` 在 251）。
 
-作者沒有自己實作 Modbus，是直接包一個開源函式庫，這是「OT 惡意程式門檻不高」最直接的證據。DWARF 還留著開發者的建置路徑 `C:/Users/Hiro Kirashi/Documents/Projects/Golang/go_modbus/CleintTCP/main.go`，含行號（`main` 在 437、`MbConfig.write` 在 116、`Task.taskWorker` 在 251）。
+`main.Cmd` 的欄位即 CLI 介面：`ip`、`inputTask`、`inputList`、`inputTarget`、`cycle`、`output`、`mode`、`address`、`count`、`value`、`threads`、`timeout`、`try`、`debug`、`history`，單目標走 `-ip`，多目標與排程走 `-inputTask`/`-inputList`/`-inputTarget`/`-cycle` 指向的 JSON 檔，結果經 `-output` 寫出，JSON schema 的欄位有 `Ip`、`Code`、`Address`、`Count`、`Value`、`State`、`Tasks`、`Iplist`、`Targetlist`、`StartTime`、`WorkTime`、`PeriodTime`、`IntervalTime`。
 
-`main.Cmd` 的欄位即 CLI 介面：`ip`、`inputTask`、`inputList`、`inputTarget`、`cycle`、`output`、`mode`、`address`、`count`、`value`、`threads`（預設 3）、`timeout`（預設 10）、`try`（預設 3）、`debug`、`history`。單目標走 `-ip`，多目標與排程走 `-inputTask`/`-inputList`/`-inputTarget`/`-cycle` 指向的 JSON 檔，結果經 `-output` 寫出。JSON schema 的欄位有 `Ip`、`Code`、`Address`、`Count`、`Value`、`State`、`Tasks`、`Iplist`、`Targetlist`、`StartTime`、`WorkTime`、`PeriodTime`、`IntervalTime`。
-
-`main.main` 對 `mode` 字串的解析只有三條分支：`write` 給 `Code = 6`、`write-m` 給 `Code = 0x10`，其餘一律 `Code = 3`。`main.Task.taskWorker` 依 `Code` 分派到 `MbConfig.read`(FC03)、`MbConfig.write`(FC06，內部 reason 字串為 `Write Holding Register`)、`MbConfig.writeMultiple`(FC16)，落到 default 則什麼都不做。
+`main.main` 對 `mode` 字串的解析只有三條分支：`write` 給 `Code = 6`、`write-m` 給 `Code = 0x10`，其餘一律 `Code = 3`，`main.Task.taskWorker` 依 `Code` 分派到 `MbConfig.read`(FC03)、`MbConfig.write`(FC06)、`MbConfig.writeMultiple`(FC16)，落到 default 則什麼都不做。
 
 **FrostyGoop 只能操作 holding register，完全沒有 coil 能力。** `rolfl/modbus` 函式庫裡雖然編進了 `ReadCoils`/`WriteSingleCoil` 等符號，但 `main` 從未呼叫。這直接限制了忠實重寫版能走的攻擊路徑，見下節。
 
