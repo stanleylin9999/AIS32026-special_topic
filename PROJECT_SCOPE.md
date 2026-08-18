@@ -16,7 +16,7 @@ FrostyGoop 本身是獨立 CLI 工具，攻擊者取得立足點後手動執行�
 
 以下除了 FrostyGoop 樣本事實外，都是實際量測或直接讀 GRFICS 原始碼得出，非理論推估。
 
-### FrostyGoop 樣本事實（`lab/FrostyGoop/`，Ghidra 專案 `FrostyGoop`）
+### FrostyGoop 樣本事實
 
 `file` 判定為 PE32+ Windows x86-64 console，`go version -m` 直接吐出完整 build metadata：go1.20.4、`CGO_ENABLED=0`、`GOARCH=amd64`、`GOOS=windows`、module path `github.com/rolfl/modbus/CleintTCP`，相依 `github.com/rolfl/modbus`、`github.com/hsblhsn/queues`、`gopkg.in/logex.v1`。`CleintTCP` 是作者把 Client 拼錯，可當樣本身分佐證。
 
@@ -47,7 +47,7 @@ FrostyGoop 本身是獨立 CLI 工具，攻擊者取得立足點後手動執行�
 
 同一台 PLC 上有些位址寫了就穩、有些寫了就被吃掉，這是惡意程式需要先讀取偵察的直接理由，也對應 FrostyGoop 先 FC03 讀再寫的行為模式。
 
-### 協定覆蓋範圍決定攻擊性質（本專題最主要的技術結論）
+### 協定覆蓋範圍決定攻擊性質
 
 樣本只有 FC03/06/16，碰不到 coil，這限制了它能做的攻擊種類：切換 `manual_mode` 需要 FC05，做不到，所以真實 FrostyGoop 在這台 PLC 上唯一能走的是 HR1026（`pressure_sp`）: holding register、FC06 可寫、不需 manual_mode，由自動控制迴路自己把壓力推上去，製程表面上全程正常。
 
@@ -57,7 +57,7 @@ FrostyGoop 本身是獨立 CLI 工具，攻擊者取得立足點後手動執行�
 
 **兩條路徑都已從乾淨初始狀態實測成立。**
 
-### HR1026 路徑實測記錄（2026-07-25，從重啟 `plc` 的乾淨狀態起算）
+### HR1026 路徑實測記錄
 
 壓力的工程單位換算為 `kPa = raw / 65535 * 3200`（出自 `simulation/remote_io/modbus/tank.py:10`），物理模型本身在 `TE_process.cc:232` 把壓力夾在 3200 kPa，正常運轉的 `pressure_sp` 是 55295 raw，即 2700 kPa。
 
