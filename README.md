@@ -5,16 +5,9 @@ Compose stack。
 
 ## 目錄結構
 
-- `GRFICSv3/`: Fortiphyd OT/ICS lab 的 fork，有自己的 git repo/remote，只提供模擬與
-  視覺化的攻擊目標，架構見它自己的 `CLAUDE.md`。
-- `Mythic/`: Mythic C2 框架的 fork，有自己的 git repo/remote，提供攻擊者那一側。
 - `frostygoop-rewrite/`: 本專題唯一自己寫的程式碼，FrostyGoop 樣本的 Go 重寫版，投遞
-  到 implant 上跑的靜態 binary，跟 GRFICS/Mythic 都沒有 build 耦合。
-- `team/`: 四人分工與介面契約，`team/README.md` 是協定層與序列層之間唯一定義一次的
-  Go interface。
-
-`GRFICSv3/` 和 `Mythic/` 都是各自獨立 clone 的 repo，不是 submodule，這個頂層 repo 只
-追蹤專案文件跟 `frostygoop-rewrite/`。
+  到 implant 上跑的靜態 binary。
+- `team/`: 小組分工內容 (我負責協定層的部分)
 
 第一次接觸這個專案？`SETUP.md` 從乾淨的 Linux 主機開始，把兩個 stack 都建起來。
 
@@ -45,26 +38,3 @@ ELF 走完 register -> upload -> chmod -> shell 執行整條路）。HR1026（`p
 步是把 `frostygoop-rewrite/` 的 Go binary 與兩條攻擊序列（coil 路徑、holding register
 路徑）做完，換掉手動下 Modbus 指令，接上 Mythic tasking 跑完整鏈路。詳細分工與時程見
 `PROJECT_SCOPE.md`、`team/README.md`。
-
-## Ops 補充
-
-**手動改 `.env` 之後 Postgres/RabbitMQ 密碼對不上**
-
-兩個容器都是第一次 init 時把密碼
-寫進 bind-mount 的資料目錄（`postgres-docker/database`、`rabbitmq-docker/storage`）。
-之後如果 `.env` 裡的 `POSTGRES_PASSWORD` 或 `RABBITMQ_PASSWORD` 換了（例如密碼管理器重
-新產生一組新密碼），已經 init 過的服務還是吃舊密碼，`mythic_server` 兩邊都認證失敗，回
-報 unhealthy。修法是把對應的資料目錄清掉再重啟，讓它用目前 `.env` 的值重新 init。只有全
-新安裝、還沒有任何 operation/checkin 資料時這樣做才安全，一旦有真的 Mythic operation 資
-料就不能清。
-
-**UFW 預設擋掉 bridge 到 host 的流量**
-
-這台機器的 UFW 預設丟棄從 Docker bridge network
-打進來的 `INPUT`/`FORWARD` 流量，會讓上面 `b-ics-net` -> `192.168.95.1:80` 的 callback
-路徑安靜失敗（逾時，不是連線被拒）。需要針對相關 subnet/port 開一條明確的 allow rule；
-細節看這個檔案的 git history，或是先問過，不要假設新機器上這條已經開好。
-
-## 期限
-
-簡報 2026-07-30 14:00 繳交，現場 demo 20:30-20:45。
