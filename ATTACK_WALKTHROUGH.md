@@ -1,7 +1,7 @@
 # ICS C2 攻擊演示 Walkthrough
 
 透過 Mythic C2 框架，從 operator UI 一路打進 OT 網段的 PLC，對 GRFICS 模擬化工廠寫入
-Modbus 指令，讓 3D dashboard (`localhost:8090`) 出現真實可見的超壓畫面。
+Modbus 指令，讓 3D dashboard (`localhost:8090`) 出現真實可見的畫面。
 
 這份文件記錄完整攻擊鏈的每個步驟，供簡報 (2026-07-30) 現場 demo 使用。
 
