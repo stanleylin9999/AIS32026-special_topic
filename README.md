@@ -7,7 +7,7 @@ Compose stack。
 
 - `frostygoop-rewrite/`: 本專題唯一自己寫的程式碼，FrostyGoop 樣本的 Go 重寫版，投遞
   到 implant 上跑的靜態 binary。
-- `team/`: 小組分工內容 (我負責協定層的部分)
+- `team/`: 小組分工內容 **(我負責協定層的部分)**
 
 第一次接觸這個專案？`SETUP.md` 從乾淨的 Linux 主機開始，把兩個 stack 都建起來。
 
