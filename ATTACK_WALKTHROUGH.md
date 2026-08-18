@@ -188,6 +188,3 @@ docker compose -f GRFICSv3/docker-compose.yml restart simulation
 
 等約 15 秒壓力回到約 2700 kPa 正常運轉, 就能再跑一次重現。
 
-
-
-。
