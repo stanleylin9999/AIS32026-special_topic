@@ -45,7 +45,7 @@ func (c *Conn) Close() error
 
 func (c *Conn) ReadCoils(addr, count uint16) ([]bool, error)      // FC01
 func (c *Conn) ReadHolding(addr, count uint16) ([]uint16, error)  // FC03
-func (c *Conn) ReadInput(addr, count uint16) ([]uint16, error)  // FC04
+func (c *Conn) ReadInput(addr, count uint16) ([]uint16, error)    // FC04
 func (c *Conn) WriteCoil(addr uint16, on bool) error              // FC05
 func (c *Conn) WriteSingle(addr, value uint16) error              // FC06
 func (c *Conn) WriteMultiple(addr uint16, values []uint16) error  // FC16
