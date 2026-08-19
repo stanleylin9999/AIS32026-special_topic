@@ -75,6 +75,7 @@ type Result struct {
 
 func CoilTakeover(c *modbus.Conn, f1, f2, purge, product uint16) (*Result, error)
 func PressureSetpoint(c *modbus.Conn, value uint16) (*Result, error)
+func PressureMonitor(c *modbus.Conn, interval, duration time.Duration) (*Result, error)
 ```
 
 ## `-mode` 對應表
