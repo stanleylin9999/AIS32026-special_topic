@@ -18,13 +18,13 @@ FrostyGoop 本身是獨立 CLI 工具，攻擊者取得立足點後手動執行�
 
 `file` 判定為 PE32+ Windows x86-64 console，`go version -m` 直接吐出完整 build metadata：go1.20.4、`CGO_ENABLED=0`、`GOARCH=amd64`、`GOOS=windows`、module path `github.com/rolfl/modbus/CleintTCP`，相依 `github.com/rolfl/modbus`、`github.com/hsblhsn/queues`、`gopkg.in/logex.v1`，`CleintTCP` 是作者把 Client 拼錯，可當樣本身分佐證
 
-作者沒有自己實作 Modbus，是直接包一個開源函式庫，DWARF 還留著開發者的建置路徑 `C:/Users/Hiro Kirashi/Documents/Projects/Golang/go_modbus/CleintTCP/main.go`
+作者沒有自己實作 Modbus，是直接包一個開源函式庫，DWARF 還留著開發者的建置路徑 `C:/Users/HiroKirashi/Documents/Projects/Golang/go_modbus/CleintTCP/main.go`
 
 `main.Cmd` 的欄位即 CLI 介面：`ip`、`inputTask`、`inputList`、`inputTarget`、`cycle`、`output`、`mode`、`address`、`count`、`value`、`threads`、`timeout`、`try`、`debug`、`history`，單目標走 `-ip`，多目標與排程走 `-inputTask`/`-inputList`/`-inputTarget`/`-cycle` 指向的 JSON 檔，結果經 `-output` 寫出，JSON schema 的欄位有 `Ip`、`Code`、`Address`、`Count`、`Value`、`State`、`Tasks`、`Iplist`、`Targetlist`、`StartTime`、`WorkTime`、`PeriodTime`、`IntervalTime`
 
 `main.main` 對 `mode` 字串的解析只有三條分支：`write` 給 `Code = 6`、`write-m` 給 `Code = 0x10`，其餘一律 `Code = 3`，`main.Task.taskWorker` 依 `Code` 分派到 `MbConfig.read`(FC03)、`MbConfig.write`(FC06)、`MbConfig.writeMultiple`(FC16)，落到 default 則什麼都不做
 
-**FrostyGoop 只能操作 holding register，完全沒有 coil 能力。** `rolfl/modbus` 函式庫裡雖然編進了 `ReadCoils`/`WriteSingleCoil` 等符號，但 `main` 從未呼叫
+**FrostyGoop 只能操作 holding register，完全沒有 coil 能力** `rolfl/modbus` 函式庫裡雖然編進了 `ReadCoils`/`WriteSingleCoil` 等符號，但 `main` 從未呼叫
 
 ### PLC 邏輯（`GRFICSv3/plc/st_files/326339.st`）
 
@@ -33,7 +33,7 @@ FrostyGoop 本身是獨立 CLI 工具，攻擊者取得立足點後手動執行�
 兩個真實聯鎖，決定攻擊步驟必須有順序：
 
 - `IF manual_mode THEN` 包住 `f1_manual_sp` 等四個手動設定值的套用，未先將 coil 0 置位，寫入 HR10-13 完全無效
-- `IF NOT run_bit THEN` 強制排放閥全開（`purge_valve_sp := 65535`）。`run_bit` 為 FALSE 時壓力會被洩掉，攻擊直接中和，攻擊前必須確認其為 TRUE
+- `IF NOT run_bit THEN` 強制排放閥全開（`purge_valve_sp := 65535`） `run_bit` 為 FALSE 時壓力會被洩掉，攻擊直接中和，攻擊前必須確認其為 TRUE
 
 ### 暫存器行為分三層
 
@@ -51,9 +51,7 @@ FrostyGoop 本身是獨立 CLI 工具，攻擊者取得立足點後手動執行�
 
 我們的重寫版刻意補上 FC01/FC05，於是多開了第二類攻擊：置位 coil 0 繞過整個控制迴路，閥門開度直接由攻擊者指定
 
-**同一台 PLC、同一支惡意程式家族，兩種性質完全不同的攻擊，差別純粹來自協定覆蓋範圍。** 間接經控制迴路生效與直接接管執行器，是兩個不同的威脅等級
-
-**兩條路徑都已從初始狀態實測成立。**
+**同一台 PLC、同一支惡意程式家族，兩種性質完全不同的攻擊，差別純粹來自協定覆蓋範圍** 間接經控制迴路生效與直接接管執行器，是兩個不同的威脅等級
 
 ### HR1026 路徑實測記錄
 
@@ -67,7 +65,7 @@ FrostyGoop 本身是獨立 CLI 工具，攻擊者取得立足點後手動執行�
 
 值得注意的副作用：ST 第 197 行的 `pressure_override()` 本來是壓力升高時降低產品流量的安全響應，但第 227 行無條件把 `product_flow_setpoint` 重設為 30000，等於把它抵銷掉，這是 PLC 程式自身的邏輯缺陷，不是攻擊造成的
 
-爬升速率也是 demo 節奏的資訊：**隱蔽的路徑同時也是慢的路徑。** 直接接管執行器快而明顯，改 setpoint 慢而安靜
+爬升速率也是 demo 節奏的資訊：**隱蔽的路徑同時也是慢的路徑** 直接接管執行器快而明顯，改 setpoint 慢而安靜
 
 > 簡單來說，一個把安全控制器關掉，然後讓他一直上升到爆炸，另一個就是把安全控制器的安全閥值設定到我們要的目標值
 
