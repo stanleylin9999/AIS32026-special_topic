@@ -121,7 +121,7 @@ holding register 從 HR0 開始, `%MW` (memory words) 從 HR1024 開始, `%QX` (
 指令效果一路穿透到 OT 網段的 PLC
 
 打開 operator UI (`localhost:8080`), 從左側 callback 列表點進 callback 1 的
-Interact 視窗。
+Interact 視窗
 
 準備 payload: 遠端要跑的 Python 一次送五筆 Modbus write-single, 讓攻擊自成一體,
 不需要在受害主機上額外裝工具, 五筆寫入:
