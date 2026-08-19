@@ -1,6 +1,6 @@
 # 環境建置指南
 
-從一台乾淨的 Linux 主機建出 GRFICSv3 + Mythic 這兩個獨立的 Docker Compose stack，這份文件主要敘述如何架設環境
+從一台 Linux 主機建出 GRFICSv3 + Mythic 這兩個獨立的 Docker Compose stack，這份文件主要敘述如何架設環境
 
 ## 前置需求
 
