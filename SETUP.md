@@ -1,17 +1,17 @@
 # 環境建置指南
 
-從一台乾淨的 Linux 主機建出 GRFICSv3 + Mythic 這兩個獨立的 Docker Compose stack，細節架構、port 對照表、攻擊路徑現況看 `README.md`，這份文件只講怎麼把環境生出來。
+從一台乾淨的 Linux 主機建出 GRFICSv3 + Mythic 這兩個獨立的 Docker Compose stack，這份文件主要敘述如何架設環境
 
 ## 前置需求
 
-- Docker Engine + Docker Compose plugin，Mythic repo 內附 `install_docker_ubuntu.sh`，用 root 跑就會裝好。
+- Docker Engine + Docker Compose plugin，Mythic repo 內附 `install_docker_ubuntu.sh`，用 root 跑就會裝好
 - 把自己帳號加進 `docker` group，之後跑 `mythic-cli`、`docker compose` 都不用 sudo：
   ```bash
   sudo usermod -aG docker $USER
   ```
-  加完要登出重登才會生效。
-- `git` 和 `git-lfs`（GRFICSv3 的模擬畫面用 Unity WebGL assets，靠 git-lfs 抓）。
-- Go 編譯環境（`mythic-cli` 是從原始碼編出來的二進位檔，`make` 裡面會呼叫 Go）。
+  加完要登出重登才會生效
+- `git` 和 `git-lfs`（GRFICSv3 的模擬畫面用 Unity WebGL assets，靠 git-lfs 抓）
+- Go 編譯環境（`mythic-cli` 是從原始碼編出來的二進位檔，`make` 裡面會呼叫 Go）
 
 ## 抓 repo
 
@@ -65,7 +65,7 @@ sudo ./mythic-cli install github https://github.com/MythicAgents/poseidon
 sudo ./mythic-cli install github https://github.com/MythicC2Profiles/http
 ```
 
-C2 profile 和 agent 這類第三方服務，mythic-cli 裝的時候一律用 `network_mode: host`，不用另外設定，這也是 HTTP C2 能透過 gateway IP 打到 GRFICS `b-ics-net` 而不用手動接兩個 Compose 專案網路的原因。
+C2 profile 和 agent 這類第三方服務，mythic-cli 裝的時候一律用 `network_mode: host`，不用另外設定，這也是 HTTP C2 能透過 gateway IP 打到 GRFICS `b-ics-net` 而不用手動接兩個 Compose 專案網路的原因
 
 ## 驗證
 
@@ -73,4 +73,4 @@ C2 profile 和 agent 這類第三方服務，mythic-cli 裝的時候一律用 `n
 - GRFICS HMI（ScadaLTS）：http://localhost:6081
 - Mythic 操作介面：https://localhost:8080
 
-三個都能開得起來就算建置完成。
+三個都能開得起來就算建置完成
