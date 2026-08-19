@@ -89,6 +89,6 @@ Poseidon build 沒有原生 `chmod` command（GraphQL command table 是 payload 
 
 ### 實作
 
-- **Go binary（FrostyGoop 重寫版）** CLI 介面對齊逆向出的 `main.Cmd`：`-ip -mode -address -value -count -threads -timeout -try -output -debug`，實作樣本原有的 FC03/FC06/FC16，**外加樣本沒有的 FC01/FC05**。`-mode` 保留樣本的 `write`/`write-m` 語義，另增 `read-coil`/`write-coil` 兩個值走新增的 coil 路徑
+- **Go binary（FrostyGoop 重寫版）** CLI 介面對齊逆向出的 `main.Cmd`：`-ip -mode -address -value -count -threads -timeout -try -output -debug`，實作樣本原有的 FC03/FC06/FC16，**外加樣本沒有的 FC01/FC04/FC05**。`-mode` 保留樣本的 `write`/`write-m` 語義，另增 `read-coil`/`write-coil` 兩個值走新增的 coil 路徑
 - **序列層編排** coil 路徑：FC01 讀 `run_bit` 確認為 TRUE -> FC05 置位 `manual_mode` -> FC16 一次寫入 HR10-13 -> FC01/FC03 讀回驗證 -> 失敗則將 `manual_mode` 寫回 0 回滾，holding register 路徑：FC03 讀 HR1026 存下原值 -> FC06 寫入新 setpoint -> FC03 讀回驗證 -> 失敗則將原值寫回，兩者都沿用樣本 `Task.taskWorker` 已有的 read/dispatch/回報結構，不是外加的框架
 
