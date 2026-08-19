@@ -1,14 +1,8 @@
-# 分工與介面契約
-
-四個人平行作業的共用約定，每個人另有一份自己的工作文件
-
-專題目標、已驗證事實、日程表與 demo 檢查清單一律看 `../PROJECT_SCOPE.md`。
-
 ## 誰做什麼
 
 | 工作流         | 文件                | 內容                                                       |
 | -------------- | ------------------- | ---------------------------------------------------------- |
-| 協定層         | `PROTOCOL.md`       | Go binary 的 CLI 與 Modbus wire format，五個 function code |
+| 協定層(我負責的)| `PROTOCOL.md`       | Go binary 的 CLI 與 Modbus wire format，五個 function code |
 | 序列與 C2      | `SEQUENCE_C2.md`    | 兩條原子攻擊序列、Mythic 投遞與 tasking                    |
 | 逆向核對與量測 | `RE_MEASUREMENT.md` | Ghidra 報告複核、暫存器行為實驗、Suricata 側錄             |
 | 簡報與文件     | `SLIDES.md`         | 三欄比較表、ATT&CK 對應、簡報與彩排                        |
