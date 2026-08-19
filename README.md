@@ -29,4 +29,4 @@ GRFICS 的 `plc` 容器沒有對外開 port，只能從 `b-ics-net` 這個 Docke
 Mythic 的 HTTP C2 profile（`http` 容器）用 `network_mode: host` 跑，直接監聽 host 的
 `0.0.0.0:80`，不走 `mythic_default` 這個 bridge network。放在 GRFICS `b-ics-net`
 （192.168.95.0/24，`plc` 所在網段）上的 implant，靠回連 bridge 的 gateway 位址
-`192.168.95.1:80` 就能連到它，詳情請見 ATTACK_WALKTHROUGH.MD
+`192.168.95.1:80` 就能連到它，詳情請見 `ATTACK_WALKTHROUGH.md`
