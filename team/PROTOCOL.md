@@ -9,7 +9,7 @@ wire format 現在就寫，flag 名稱等複核結果，複核由逆向與量測
 `main.go` 的骨架已經有一組暫定 flag 可以跑，而 `-mode`的完整對應表已經在
 `README.md` 定好了，那幾列是我們自己的設計，可以照著實作
 
-## 要實作的五個 function code
+## 要實作的六個 function code
 
 樣本原本只有 FC03/06/16，FC01/FC04/FC05 是我們刻意加的能力，也是整個專題重寫版比原版多做
 了什麼的實質內容，不是順手加的，六個共用同一套 MBAP header 與 PDU 組裝
