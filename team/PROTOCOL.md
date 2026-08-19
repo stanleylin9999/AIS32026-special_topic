@@ -28,8 +28,7 @@ big-endian，`protocol_id` 固定 0，FC05 的值只有兩個合法值：`0xFF00
 是 1/0
 
 回應要處理 exception：function code 最高位被設起來（例如請求 0x06、回應 0x86）時，後面
-一個 byte 是 exception code，這種情況回 Go 的 `error`，不要當成功，序列層靠這個判斷要不
-要回滾
+一個 byte 是 exception code，這種情況回 Go 的 `error`，不要當成功，序列層靠這個判斷要不要回滾
 
 ## 測試用假 PLC
 
@@ -45,5 +44,4 @@ coil 表，跟現有的 holding register 表平行
 - `-debug` 印得出收送的 hex frame，這個之後做封包並排比對會用到
 - `go build` 出來的靜態 binary 能在 implant 容器裡跑（`CGO_ENABLED=0 GOOS=linux GOARCH=amd64`）
 
-最後一項別留到最後才驗，投遞鏈已經用 hello-world 靜態 ELF 走通過，所以只要編譯參數對就
-不會有意外，但還是早點確認比較好
+最後一項別留到最後才驗，投遞鏈已經用 hello-world 靜態 ELF 走通過，所以只要編譯參數對就不會有意外，但還是早點確認比較好
