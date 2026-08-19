@@ -20,8 +20,7 @@ Mythic Operator UI (8080)
             -> 3D Dashboard (8090)     壓力表進紅區
 ```
 
-重點是整條鏈只透過 Mythic 觸發，PLC 全程只看到來自它自己 OT 網段上一台被控主機的
-流量，operator 不直接碰 PLC，這樣 demo 才能反映真實的 C2 -> OT 攻擊路徑
+重點是整條鏈只透過 Mythic 觸發，PLC 全程只看到來自它自己 OT 網段上一台被控主機的流量，operator 不直接碰 PLC，這樣 demo 才能反映真實的 C2 -> OT 攻擊路徑
 
 
 ## 環境架構與網段
