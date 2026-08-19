@@ -3,7 +3,7 @@
 | 工作流         | 文件                | 內容                                                       |
 | -------------- | ------------------- | ---------------------------------------------------------- |
 | 協定層(我負責的)| `PROTOCOL.md`       | Go binary 的 CLI 與 Modbus wire format，五個 function code |
-| 序列與 C2      | `SEQUENCE_C2.md`    | 兩條原子攻擊序列、Mythic 投遞與 tasking                    |
+| 序列與 C2      | `SEQUENCE_C2.md`    | 兩個攻擊手法(takeover、setpoint)、Mythic 投遞與 tasking                    |
 | 逆向核對與量測 | `RE_MEASUREMENT.md` | Ghidra 報告複核、暫存器行為實驗、Suricata 側錄             |
 | 簡報與文件     | `SLIDES.md`         | 三欄比較表、ATT&CK 對應、簡報與彩排                        |
 
