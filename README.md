@@ -34,3 +34,5 @@ Mythic 的 HTTP C2 profile 用 `network_mode: host` 跑，直接監聽 host 的
 | ------------------- | ------------------------------------------- | ------------------------------------------------------------------------ |
 | takeover            | 竄改coil暫存器的數值，讓進料閥全開，出料閥全關 | 容易檢測出異常，一次更改多個暫存器數值                                                      |
 | setpoint            | 竄改pressure_sp閾值，讓系統自己升壓           | 只修改閾值，讓系統緩慢升壓，較不容易被發現                                                   |
+
+報告簡報連結：https://drive.google.com/file/d/1pidsZTWZVBlK3msGsD0rcwy-UyHEH08J/view?usp=sharing
