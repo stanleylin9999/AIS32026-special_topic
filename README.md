@@ -1,14 +1,14 @@
 # ICS/OT + Mythic C2 Demo
 
 模擬工控環境（GRFICSv3）透過真實 C2 框架（Mythic）發動攻擊，兩者都是本機獨立跑的 Docker
-Compose stack。
+Compose stack
 
 ## 目錄結構
 
-- `frostygoop-rewrite/`: 本專題唯一自己寫的程式碼，FrostyGoop 樣本的 Go 重寫版，投遞到 implant 上跑的靜態 binary。
+- `frostygoop-rewrite/`: 本專題唯一自己寫的程式碼，FrostyGoop 樣本的 Go 重寫版，投遞到 implant 上跑的靜態 binary
 - `team/`: 小組分工內容 **(我負責協定層的部分)**
 
-第一次接觸這個專案？`SETUP.md` 從Linux 主機開始，把兩個 docker 都建起來。
+第一次接觸這個專案？`SETUP.md` 從Linux 主機開始，把兩個 docker 都建起來
 
 ## Port 對照表
 
@@ -22,7 +22,7 @@ Compose stack。
 | 8082/8091/3000/8888 | Mythic hasura/docs/react/jupyter  | 為了避開跟上面 8080/8090 這組慣例衝突，全部移出預設值                   |
 
 GRFICS 的 `plc` 容器沒有對外開 port，只能從 `b-ics-net` 這個 Docker network 內部連到，
-這就是重點，它才是真正的攻擊目標。
+這就是重點，它才是真正的攻擊目標
 
 ## 攻擊路徑現況
 
