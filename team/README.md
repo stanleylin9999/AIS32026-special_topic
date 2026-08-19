@@ -2,7 +2,7 @@
 
 | 工作流         | 文件                | 內容                                                       |
 | -------------- | ------------------- | ---------------------------------------------------------- |
-| 協定層(我負責的)| `PROTOCOL.md`       | Go binary 的 CLI 與 Modbus wire format，五個 function code |
+| 協定層(我負責的)| `PROTOCOL.md`       | Go binary 的 CLI 與 Modbus wire format，六個 function code |
 | 序列與 C2      | `SEQUENCE_C2.md`    | 兩個攻擊手法(takeover、setpoint)、Mythic 投遞與 tasking                    |
 | 逆向核對與量測 | `RE_MEASUREMENT.md` | Ghidra 報告複核、暫存器行為實驗、Suricata 側錄             |
 | 簡報與文件     | `SLIDES.md`         | 三欄比較表、ATT&CK 對應、簡報與彩排                        |
@@ -45,6 +45,7 @@ func (c *Conn) Close() error
 
 func (c *Conn) ReadCoils(addr, count uint16) ([]bool, error)      // FC01
 func (c *Conn) ReadHolding(addr, count uint16) ([]uint16, error)  // FC03
+func (c *Conn) ReadInput(addr, count uint16) ([]uint16, error)  // FC04
 func (c *Conn) WriteCoil(addr uint16, on bool) error              // FC05
 func (c *Conn) WriteSingle(addr, value uint16) error              // FC06
 func (c *Conn) WriteMultiple(addr uint16, values []uint16) error  // FC16
@@ -88,6 +89,7 @@ mode 分兩層，**primitive** 只送一個 function code，對應樣本用 mode
 | `write`      | FC06                      | primitive | 樣本原有 |
 | `write-m`    | FC16                      | primitive | 樣本原有 |
 | `read-coil`  | FC01                      | primitive | 我們新增 |
+| `read-input` | FC04                      | primitive | 我們新增 |
 | `write-coil` | FC05                      | primitive | 我們新增 |
 | `takeover`   | `attack.CoilTakeover`     | sequence  | 我們新增 |
 | `setpoint`   | `attack.PressureSetpoint` | sequence  | 我們新增 |
