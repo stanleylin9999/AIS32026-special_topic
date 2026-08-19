@@ -16,12 +16,12 @@ frostygoop-rewrite/
   go.mod                        module github.com/abb00717/frostygoop-rewrite
   cmd/frostygoop/main.go        [協定層] flag 解析、mode 分派
   internal/modbus/conn.go       [協定層] 連線、逾時、重試、MBAP 組裝
-  internal/modbus/client.go     [協定層] 五個 function code
+  internal/modbus/client.go     [協定層] 六個 function code
   internal/attack/addr.go       [序列層] PLC 位址常數
   internal/attack/coil.go       [序列層] coil 接管序列
   internal/attack/setpoint.go   [序列層] pressure setpoint 序列
   internal/attack/report.go     [序列層] 結果結構與 JSON 輸出
-  testdata/fake_slave.py        [協定層] 本機測試用假 PLC，支援全部五個 FC
+  testdata/fake_slave.py        [協定層] 本機測試用假 PLC，支援全部六個 FC
 ```
 
 **一個檔案只有一個負責人** 需要動不屬於自己的檔案時，先講一聲，不要直接改，Go 版本用 host 上的 1.26.0，建置目標固定 `CGO_ENABLED=0 GOOS=linux GOARCH=amd64`
