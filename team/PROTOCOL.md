@@ -21,7 +21,7 @@ wire format 現在就寫，flag 名稱等複核結果，複核由逆向與量測
 | 0x04 | Read Input Registers       | 我們新增 |
 | 0x05 | Write Single Coil        | 我們新增 |
 | 0x06 | Write Single Register    | 樣本原有 |
-| 0x10 | Write Multiple Registers | 樣本原有 |
+| 0x16 | Write Multiple Registers | 樣本原有 |
 
 MBAP header 是 `transaction_id, protocol_id, length, unit_id` 四個欄位接在 PDU 前面，
 big-endian，`protocol_id` 固定 0，FC05 的值只有兩個合法值：`0xFF00` 開、`0x0000` 關，不
