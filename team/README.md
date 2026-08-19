@@ -93,6 +93,7 @@ mode 分兩層，**primitive** 只送一個 function code，對應樣本用 mode
 | `write-coil` | FC05                      | primitive | 我們新增 |
 | `takeover`   | `attack.CoilTakeover`     | sequence  | 我們新增 |
 | `setpoint`   | `attack.PressureSetpoint` | sequence  | 我們新增 |
+| `monitor`   | `attack.PressureMonitor` | sequence  | 我們新增 |
 
 `write-coil` 是單一個 FC05，**不會**幫你做 `run_bit` 前置檢查或回滾，要完整序列請用
 `takeover`
