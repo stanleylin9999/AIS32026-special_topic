@@ -24,7 +24,7 @@ Compose stack
 GRFICS 的 `plc` 容器沒有對外開 port，只能從 `b-ics-net` 這個 Docker network 內部連到，
 這就是重點，它才是真正的攻擊目標
 
-## 攻擊路徑現況
+## 攻擊路徑
 
 Mythic 的 HTTP C2 profile 用 `network_mode: host` 跑，直接監聽 host 的
 `0.0.0.0:80`，不走 `mythic_default` 這個 bridge network，位於 GRFICS `b-ics-net`
